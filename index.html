@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>باركور الألغاز والفخاخ 3D - 20 مستوى</title>
+    <title>باركور العالم المفتوح والفخاخ 3D</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 0; overflow: hidden; background: #000; }
@@ -38,15 +38,16 @@
         }
 
         .hud-card {
-            background: rgba(15, 23, 42, 0.8); padding: 10px 20px;
+            background: rgba(15, 23, 42, 0.85); padding: 10px 20px;
             border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
         #toast-msg {
             position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
-            color: #4ade80; font-size: 26px; font-weight: bold; opacity: 0;
+            color: #4ade80; font-size: 24px; font-weight: bold; opacity: 0;
             transition: opacity 0.4s ease; pointer-events: none; text-shadow: 0 0 10px rgba(0,0,0,0.8);
-            background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px;
+            background: rgba(0,0,0,0.7); padding: 10px 25px; border-radius: 10px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -54,7 +55,7 @@
 <body>
 
     <div id="menu">
-        <h1>🎮 باركور الألغاز والفخاخ 3D</h1>
+        <h1>🌐 باركور العالم المجدد 3D</h1>
         <div class="form-group">
             <label>اسم اللاعب:</label>
             <input type="text" id="player-name-input" value="البطل">
@@ -67,11 +68,12 @@
             <label>اختر المستوى (1 - 20):</label>
             <select id="level-select"></select>
         </div>
-        <button onclick="startGame()">ابدأ التحدي 🚀</button>
+        <button onclick="startGame()">ابدأ المغامرة 🚀</button>
     </div>
 
     <div id="hud">
         <div class="hud-card">اللاعب: <span id="hud-name" style="color: #60a5fa;">-</span></div>
+        <div class="hud-card">💀 الوفيات: <span id="hud-deaths" style="color: #ef4444;">0</span></div>
         <div class="hud-card">المفتاح: <span id="hud-key" style="color: #ef4444;">❌ مفقود</span></div>
         <div class="hud-card">المستوى: <span id="hud-level" style="color: #facc15;">1</span> / 20</div>
     </div>
@@ -87,25 +89,26 @@
 
         let scene, camera, renderer;
         let playerGroup, playerMesh;
-        let platforms = [], spikes = [], checkpoints = [], traps = [];
+        let platforms = [], spikes = [], checkpoints = [], traps = [], bgStars;
         let keyObject = null, doorObject = null;
         let hasKey = false;
+        let deathCount = 0;
         
         let currentLevel = 1;
         let activeCheckpoint = { x: 0, y: 3, z: 0 };
         let isGrounded = false;
         
-        // فيزياء الباركور الدقيقة
-        const gravity = 0.018;
+        // فيزياء مريحة وأسهل للقفز
+        const gravity = 0.014; // جاذبية أخف للتحكم الأسهل
         let velocity = { x: 0, y: 0, z: 0 };
-        const speed = 0.15;
-        const jumpForce = 0.36;
+        const speed = 0.16;
+        const jumpForce = 0.35; // قفزة أسهل وأعلى
         const keys = {};
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x090d16);
-            scene.fog = new THREE.FogExp2(0x090d16, 0.012);
+            scene.background = new THREE.Color(0x050814);
+            scene.fog = new THREE.FogExp2(0x050814, 0.008);
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -113,13 +116,16 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(20, 40, 20);
+            const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
+            dirLight.position.set(30, 50, 20);
             dirLight.castShadow = true;
             scene.add(dirLight);
+
+            // إضافة خلفية جزيئات نجوم مضيئة مذهلة
+            createBeautifulBackground();
 
             window.addEventListener('keydown', e => {
                 keys[e.key.toLowerCase()] = true;
@@ -130,6 +136,22 @@
             });
             window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
             window.addEventListener('resize', onWindowResize);
+        }
+
+        // خلفية الفضاء النجمية المحسنة
+        function createBeautifulBackground() {
+            const starsGeo = new THREE.BufferGeometry();
+            const count = 1500;
+            const positions = new Float32Array(count * 3);
+
+            for (let i = 0; i < count * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 500;
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const starsMat = new THREE.PointsMaterial({ color: 0x60a5fa, size: 0.8, transparent: true, opacity: 0.8 });
+            bgStars = new THREE.Points(starsGeo, starsMat);
+            scene.add(bgStars);
         }
 
         function createPlayer(colorHex) {
@@ -156,10 +178,9 @@
             scene.add(playerGroup);
         }
 
-        // --- بناء اللغز والفخاخ والمستويات ---
+        // --- توليد العالم شبه المفتوح والتفاعلي (يتجدد عشوائياً) ---
         function buildLevel(levelNum) {
-            // تنظيف القوائم
-            platforms.forEach(p => scene.remove(p.mesh || p));
+            platforms.forEach(p => scene.remove(p.mesh));
             spikes.forEach(s => scene.remove(s));
             checkpoints.forEach(c => scene.remove(c.mesh));
             traps.forEach(t => scene.remove(t.mesh));
@@ -170,66 +191,65 @@
             hasKey = false;
             updateKeyHUD();
 
-            const length = 12 + levelNum * 6;
+            const length = 15 + levelNum * 4;
             let currentZ = 0, currentY = 0;
 
-            // 1. منصة البداية
-            createPlatform(0, 0, 0, 6, 1, 6, 0x334155);
+            // منصة البداية واسعة وأسهل
+            createPlatform(0, 0, 0, 8, 1, 8, 0x334155);
 
             let keyPlaced = false;
-            const keyTargetIndex = Math.floor(length * 0.4);
+            const keyTargetIndex = Math.floor(length * 0.45);
 
             for (let i = 0; i < length; i++) {
-                const gap = 3.5 + Math.min(levelNum * 0.15, 2.5); // فجوات محسوبة وممكنة القفز
+                // مسافات وقريبة ومريحة للقفز (مستويات أسهل)
+                const gap = 2.5 + Math.random() * 1.5; 
                 currentZ -= (4.5 + gap);
-                currentY += (Math.random() - 0.35) * 1.8;
+                currentY += (Math.random() - 0.3) * 1.2;
 
-                const pWidth = Math.max(2.2, 5.5 - levelNum * 0.12);
-                const pLength = Math.max(2.5, 6 - levelNum * 0.12);
-                const platX = (Math.sin(i * 0.8) * (2 + levelNum * 0.3));
+                // منصات أعرض لتسهيل التحكم
+                const pWidth = Math.max(3.5, 6.5 - levelNum * 0.08);
+                const pLength = Math.max(3.5, 6.5 - levelNum * 0.08);
+                
+                // مسارات متشعبة (عالم شبه مفتوح)
+                const platX = (Math.sin(i * 0.7) * (3 + Math.random() * 2));
 
-                // أنواع المنصات: عادية، متحركة، أو تختفي عند اللمس (فخ)
-                const isMoving = Math.random() < 0.25;
-                const isFakeTrap = !isMoving && Math.random() < 0.15 + (levelNum * 0.01);
+                const isMoving = Math.random() < 0.2;
+                const isFakeTrap = !isMoving && Math.random() < 0.25; // أرضية تسقط بعد 3 ثواني
 
-                const platColor = isFakeTrap ? 0x94a3b8 : (isMoving ? 0x0284c7 : 0x1e293b);
-                const plat = createPlatform(platX, currentY, currentZ, pWidth, 1, pLength, platColor, isMoving, isFakeTrap);
+                const platColor = isFakeTrap ? 0xf59e0b : (isMoving ? 0x0284c7 : 0x1e293b);
+                createPlatform(platX, currentY, currentZ, pWidth, 1, pLength, platColor, isMoving, isFakeTrap);
 
-                // أضف مفتاح اللغز في مسار جانبي/مرتفع
+                // إخفاء المفتاح في أحد المسارات
                 if (i === keyTargetIndex && !keyPlaced) {
                     createKey(platX, currentY + 1.8, currentZ);
                     keyPlaced = true;
                 }
 
-                // إضافة فخاخ (كرة عملاقة تتحرك أو شفرة حمراء)
-                if (i > 2 && Math.random() < 0.2 + (levelNum * 0.015)) {
+                // كثرة الفخاخ الأنيقة (كرات وأشواك)
+                if (i > 1 && Math.random() < 0.4) {
                     createMovingTrap(platX, currentY + 1.2, currentZ, pWidth);
                 }
 
-                // أشواك ثابته
-                if (!isFakeTrap && Math.random() < 0.3) {
+                if (!isFakeTrap && Math.random() < 0.35) {
                     createSpike(platX, currentY + 0.8, currentZ, pWidth);
                 }
 
-                // أسهم التشيك بوانت
-                if (i > 0 && i % 7 === 0 && i < length - 2) {
+                if (i > 0 && i % 6 === 0 && i < length - 2) {
                     createCheckpoint(platX, currentY + 0.5, currentZ);
                 }
             }
 
-            // 2. الباب المغلق (اللغز) ونهاية المستوى
+            // نهاية المستوى
             currentZ -= 8;
-            createPlatform(0, currentY, currentZ, 8, 1, 8, 0x1e293b);
+            createPlatform(0, currentY, currentZ, 9, 1, 9, 0x1e293b);
             
-            // الباب الذي يفتح فقط بعد جمع المفتاح
-            const doorGeo = new THREE.BoxGeometry(6, 4, 0.5);
+            const doorGeo = new THREE.BoxGeometry(7, 4.5, 0.5);
             const doorMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3 });
             doorObject = new THREE.Mesh(doorGeo, doorMat);
             doorObject.position.set(0, currentY + 2.5, currentZ - 1);
             scene.add(doorObject);
 
-            // خط النهاية خلف الباب
-            const finishGeo = new THREE.BoxGeometry(6, 0.2, 3);
+            const finishGeo = new THREE.BoxGeometry(7, 0.2, 3);
             const finishMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x15803d });
             const finishLine = new THREE.Mesh(finishGeo, finishMat);
             finishLine.position.set(0, currentY + 0.6, currentZ - 3);
@@ -245,7 +265,10 @@
             mesh.receiveShadow = true; mesh.castShadow = true;
             scene.add(mesh);
 
-            const platData = { mesh, isMoving, isFake, initialX: x, speed: 0.04, dir: 1, touched: false };
+            const platData = { 
+                mesh, isMoving, isFake, initialX: x, speed: 0.03, dir: 1, 
+                standTimer: null, falling: false 
+            };
             platforms.push(platData);
             return mesh;
         }
@@ -264,20 +287,20 @@
         }
 
         function createMovingTrap(x, y, z, width) {
-            const geo = new THREE.SphereGeometry(0.6, 12, 12);
-            const mat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2 });
+            const geo = new THREE.SphereGeometry(0.5, 12, 12);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x - width/2, y, z);
             scene.add(mesh);
 
-            traps.push({ mesh, startX: x - width/2, endX: x + width/2, speed: 0.05, dir: 1 });
+            traps.push({ mesh, startX: x - width/2, endX: x + width/2, speed: 0.04, dir: 1 });
         }
 
         function createSpike(x, y, z, pWidth) {
-            const geo = new THREE.ConeGeometry(0.4, 1, 6);
-            const mat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+            const geo = new THREE.ConeGeometry(0.4, 0.9, 6);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
             const spike = new THREE.Mesh(geo, mat);
-            spike.position.set(x + (Math.random() - 0.5) * (pWidth - 0.8), y, z);
+            spike.position.set(x + (Math.random() - 0.5) * (pWidth - 1), y, z);
             scene.add(spike);
             spikes.push(spike);
         }
@@ -315,6 +338,17 @@
             animate();
         }
 
+        // إرجاع اللاعب وتجديد العالم عشوائياً عند الموت!
+        function onPlayerDeath() {
+            deathCount++;
+            document.getElementById('hud-deaths').textContent = deathCount;
+            showToast("💀 مت! تجدد العالم بالفخاخ مجدداً!", "#ef4444");
+
+            // إعادة بناء وتشكيل توزيع الفخاخ والمنصات عشوائياً مع الحفاظ على المستوى
+            buildLevel(currentLevel);
+            respawnPlayer();
+        }
+
         function respawnPlayer() {
             playerGroup.position.set(activeCheckpoint.x, activeCheckpoint.y, activeCheckpoint.z);
             velocity = { x: 0, y: 0, z: 0 };
@@ -331,18 +365,17 @@
         function updateKeyHUD() {
             const keyHud = document.getElementById('hud-key');
             if (hasKey) {
-                keyHud.textContent = "🔑 تم الجمع";
-                keyHud.style.color = "#4ade80";
+                keyHud.textContent = "🔑 تم الجمع"; keyHud.style.color = "#4ade80";
             } else {
-                keyHud.textContent = "❌ مفقود";
-                keyHud.style.color = "#ef4444";
+                keyHud.textContent = "❌ مفقود"; keyHud.style.color = "#ef4444";
             }
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // الحركة والتحكم
+            if (bgStars) bgStars.rotation.y += 0.0003; // حركة النجوم
+
             if (keys['arrowleft'] || keys['a']) velocity.x = -speed;
             else if (keys['arrowright'] || keys['d']) velocity.x = speed;
             else velocity.x = 0;
@@ -357,15 +390,15 @@
             playerGroup.position.y += velocity.y;
             playerGroup.position.z += velocity.z;
 
-            // 1. تحريك المنصات والفخاخ
+            // تحديث المنصات والسقوط بعد 3 ثواني
             platforms.forEach(p => {
                 if (p.isMoving) {
                     p.mesh.position.x += p.speed * p.dir;
-                    if (Math.abs(p.mesh.position.x - p.initialX) > 3) p.dir *= -1;
+                    if (Math.abs(p.mesh.position.x - p.initialX) > 2.5) p.dir *= -1;
                 }
-                // تحلل الفخاخ الوهمية عند اللمس
-                if (p.isFake && p.touched) {
-                    p.mesh.position.y -= 0.15; // تسقط الأرضية
+
+                if (p.falling) {
+                    p.mesh.position.y -= 0.15; // السقوط الفعلي للأرضية
                 }
             });
 
@@ -376,7 +409,7 @@
 
             if (keyObject) keyObject.rotation.y += 0.04;
 
-            // 2. تصادمات المنصات والقفز
+            // التصادمات مع المنصات
             isGrounded = false;
             const playerBox = new THREE.Box3().setFromObject(playerGroup);
 
@@ -389,12 +422,19 @@
                         isGrounded = true;
 
                         if (p.isMoving) playerGroup.position.x += p.speed * p.dir;
-                        if (p.isFake) p.touched = true; // تفعيل فخ الأرضية
+
+                        // تفعيل مؤقت السقوط بعد 3 ثوانٍ للأرضيات الخادعة
+                        if (p.isFake && !p.standTimer) {
+                            p.mesh.material.color.setHex(0xef4444); // يتغير لونها للأحمر للتحذير
+                            p.standTimer = setTimeout(() => {
+                                p.falling = true;
+                            }, 3000); // 3000 ملي ثانية = 3 ثواني بالضبط
+                        }
                     }
                 }
             }
 
-            // 3. التقاط المفتاح
+            // جمع المفتاح
             if (keyObject && !hasKey) {
                 const keyBox = new THREE.Box3().setFromObject(keyObject);
                 if (playerBox.intersectsBox(keyBox)) {
@@ -405,29 +445,28 @@
                 }
             }
 
-            // 4. التصادم مع الباب
+            // الباب
             if (doorObject) {
                 const doorBox = new THREE.Box3().setFromObject(doorObject);
                 if (playerBox.intersectsBox(doorBox)) {
                     if (hasKey) {
-                        scene.remove(doorObject); // فتح الباب
+                        scene.remove(doorObject);
                         doorObject = null;
                         showToast("🔓 انفتح الباب!");
                     } else {
-                        // منع العبور وإرجاع اللاعب قليلاً
                         playerGroup.position.z += 0.2;
-                        showToast("🔒 الباب مغلق! ابحث عن المفتاح أولاً", "#ef4444");
+                        showToast("🔒 الباب مغلق! ابحث عن المفتاح", "#ef4444");
                     }
                 }
             }
 
-            // 5. التصادم مع الأشواك والفخاخ
+            // لمس الفخاخ أو الأشواك
             [...spikes, ...traps.map(t => t.mesh)].forEach(danger => {
                 const dangerBox = new THREE.Box3().setFromObject(danger);
-                if (playerBox.intersectsBox(dangerBox)) respawnPlayer();
+                if (playerBox.intersectsBox(dangerBox)) onPlayerDeath();
             });
 
-            // 6. التشيك بوانت
+            // التشيك بوانت
             checkpoints.forEach(cp => {
                 const cpBox = new THREE.Box3().setFromObject(cp.mesh);
                 if (playerBox.intersectsBox(cpBox) && !cp.activated) {
@@ -438,10 +477,10 @@
                 }
             });
 
-            // السقوط
-            if (playerGroup.position.y < -12) respawnPlayer();
+            // السقوط في الهاوية
+            if (playerGroup.position.y < -12) onPlayerDeath();
 
-            // 7. خط النهاية
+            // خط النهاية
             const finishObj = scene.getObjectByName("finish");
             if (finishObj) {
                 const finishBox = new THREE.Box3().setFromObject(finishObj);
@@ -454,16 +493,16 @@
                         activeCheckpoint = { x: 0, y: 2, z: 0 };
                         respawnPlayer();
                     } else {
-                        alert('🏆 أسطورة! أكملت جميع الألغاز والمستويات الـ 20!');
+                        alert('🏆 أسطورة! أكملت جميع المستويات والعوالم بنجاح!');
                         document.getElementById('menu').style.display = 'block';
                     }
                 }
             }
 
-            // كاميرا سلسة
+            // كاميرا مريحة
             camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
-            camera.position.y += (playerGroup.position.y + 4 - camera.position.y) * 0.1;
-            camera.position.z += (playerGroup.position.z + 7 - camera.position.z) * 0.1;
+            camera.position.y += (playerGroup.position.y + 4.5 - camera.position.y) * 0.1;
+            camera.position.z += (playerGroup.position.z + 8 - camera.position.z) * 0.1;
             camera.lookAt(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z - 2);
 
             renderer.render(scene, camera);
