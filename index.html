@@ -1,148 +1,433 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة المكعب والمتاهة 3D</title>
+    <title>لعبة باركور المكعب 3D - 20 مستوى</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #ui {
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; }
+        
+        /* واجهة قائمة تخصيص الشخصية والمستويات */
+        #menu {
             position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 30px;
+            border-radius: 16px;
             color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 2px solid #3b82f6;
+            z-index: 10;
+            min-width: 320px;
+        }
+
+        #menu h1 { margin-top: 0; color: #60a5fa; text-shadow: 0 0 10px rgba(96,165,250,0.5); }
+        
+        .form-group { margin-bottom: 20px; text-align: right; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #334155;
+            background: #1e293b; color: white; font-size: 16px; outline: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white; border: none; padding: 12px 30px; border-radius: 8px;
+            font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s;
+            width: 100%; box-shadow: 0 4px 15px rgba(37,99,235,0.4);
+        }
+
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.6); }
+
+        /* شاشة المعلومات أثناء اللعب (HUD) */
+        #hud {
+            position: absolute; top: 15px; right: 15px; left: 15px;
+            display: flex; justify-content: space-between; pointer-events: none;
+            color: white; font-size: 18px; font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5;
+        }
+
+        .hud-card {
+            background: rgba(15, 23, 42, 0.7); padding: 10px 20px;
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        #checkpoint-msg {
+            position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
+            color: #4ade80; font-size: 28px; font-weight: bold; opacity: 0;
+            transition: opacity 0.5s ease; pointer-events: none; text-shadow: 0 0 10px #4ade80;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <div id="ui">استخدم أسهم الإتجاهات للتنقل وتجنب الأشواك الحمراء!</div>
+    <div id="menu">
+        <h1>🎮 باركور المكعبات 3D</h1>
+        <div class="form-group">
+            <label>اسم اللاعب:</label>
+            <input type="text" id="player-name-input" value="البطل">
+        </div>
+        <div class="form-group">
+            <label>لون الشخصية:</label>
+            <input type="color" id="player-color-input" value="#00fff5">
+        </div>
+        <div class="form-group">
+            <label>اختر المستوى (1 - 20):</label>
+            <select id="level-select"></select>
+        </div>
+        <button onclick="startGame()">ابدأ اللعب 🚀</button>
+    </div>
+
+    <div id="hud">
+        <div class="hud-card">اللاعب: <span id="hud-name" style="color: #60a5fa;">-</span></div>
+        <div class="hud-card">المستوى: <span id="hud-level" style="color: #facc15;">1</span> / 20</div>
+    </div>
+    <div id="checkpoint-msg">🚩 تم حفظ نقطة التفتيش!</div>
 
     <script>
-        // --- 1. إعداد المشهد والكايمرا ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // الإضاءة
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
-        scene.add(dirLight);
-
-        // --- 2. إنشاء أرضية المسار ---
-        const trackGeometry = new THREE.BoxGeometry(10, 0.5, 100);
-        const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x16213e });
-        const track = new THREE.Mesh(trackGeometry, trackMaterial);
-        track.position.z = -45;
-        scene.add(track);
-
-        // --- 3. إنشاء المكعب (اللاعب) ---
-        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00fff5 });
-        const player = new THREE.Mesh(playerGeometry, playerMaterial);
-        player.position.set(0, 0.75, 0);
-        scene.add(player);
-
-        // --- 4. إنشاء العوائق (الأشواك/المخاريط) ---
-        const obstacles = [];
-        const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xff0055 });
-
-        // توزيع الأشواك على طول المسار
-        for (let i = -10; i > -90; i -= 8) {
-            const coneGeometry = new THREE.ConeGeometry(0.6, 1.2, 8);
-            const spike = new THREE.Mesh(coneGeometry, obstacleMaterial);
-            
-            // تحديد موقع عشوائي للشوك على المحور X (يمين/وسط/يسار)
-            const randomX = (Math.floor(Math.random() * 3) - 1) * 2.5; 
-            spike.position.set(randomX, 0.8, i);
-            
-            scene.add(spike);
-            obstacles.push(spike);
+        // --- ملء قائمة المستويات ---
+        const levelSelect = document.getElementById('level-select');
+        for (let i = 1; i <= 20; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `المستوى ${i}`;
+            levelSelect.appendChild(opt);
         }
 
-        // --- 5. خط النهاية ---
-        const finishGeometry = new THREE.BoxGeometry(10, 0.1, 2);
-        const finishMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff66 });
-        const finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
-        finishLine.position.set(0, 0.3, -93);
-        scene.add(finishLine);
+        // --- إعدادات اللعبة والمشهد ---
+        let scene, camera, renderer;
+        let playerGroup, playerMesh, eyeMesh1, eyeMesh2;
+        let platforms = [], spikes = [], checkpoints = [], finishLine;
+        
+        let currentLevel = 1;
+        let activeCheckpoint = { x: 0, y: 3, z: 0 };
+        let isGrounded = false;
+        
+        // الفيزياء والحركة
+        const gravity = 0.015;
+        let velocity = { x: 0, y: 0, z: 0 };
+        const speed = 0.12;
+        const jumpForce = 0.32;
+        const keys = {};
 
-        // --- 6. التحكم باللاعب ---
-        const keys = { Left: false, Right: false, Up: false, Down: false };
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
 
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') keys.Left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd') keys.Right = true;
-            if (e.key === 'ArrowUp' || e.key === 'w') keys.Up = true;
-            if (e.key === 'ArrowDown' || e.key === 's') keys.Down = true;
-        });
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
 
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') keys.Left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd') keys.Right = false;
-            if (e.key === 'ArrowUp' || e.key === 'w') keys.Up = false;
-            if (e.key === 'ArrowDown' || e.key === 's') keys.Down = false;
-        });
+            // الإضاءة
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
 
-        // --- 7. حلقة التحديث والرسم (Game Loop) ---
-        let gameOver = false;
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(20, 40, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
 
-        function animate() {
-            if (gameOver) return;
+            // التحكم بمفاتيح الحركة
+            window.addEventListener('keydown', e => {
+                keys[e.key.toLowerCase()] = true;
+                if (e.code === 'Space' && isGrounded) {
+                    velocity.y = jumpForce;
+                    isGrounded = false;
+                }
+            });
+            window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+            window.addEventListener('resize', onWindowResize);
+        }
 
-            requestAnimationFrame(animate);
+        // --- إنشاء تصميم الشخصية الجذاب ---
+        function createPlayer(colorHex) {
+            if (playerGroup) scene.remove(playerGroup);
 
-            // حركة المكعب
-            const speed = 0.15;
-            if (keys.Left && player.position.x > -4) player.position.x -= speed;
-            if (keys.Right && player.position.x < 4) player.position.x += speed;
-            if (keys.Up && player.position.z > -93) player.position.z -= speed;
-            if (keys.Down && player.position.z < 0) player.position.z += speed;
+            playerGroup = new THREE.Group();
 
-            // جعل الكاميرا تتبع المكعب
-            camera.position.set(player.position.x, player.position.y + 4, player.position.z + 8);
-            camera.lookAt(player.position.x, player.position.y, player.position.z - 2);
+            // جسم المكعب الرئيسي
+            const bodyGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: colorHex, roughness: 0.2, metalness: 0.3 
+            });
+            playerMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            playerMesh.castShadow = true;
+            playerGroup.add(playerMesh);
 
-            // التحقق من التصادم مع الأشواك
-            const playerBox = new THREE.Box3().setFromObject(player);
+            // عيون الشخصية لإعطائها مظهراً مميزاً
+            const eyeGeo = new THREE.BoxGeometry(0.2, 0.3, 0.1);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            eyeMesh1 = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeMesh1.position.set(-0.3, 0.2, -0.61);
+            
+            eyeMesh2 = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeMesh2.position.set(0.3, 0.2, -0.61);
 
-            for (let spike of obstacles) {
-                const spikeBox = new THREE.Box3().setFromObject(spike);
-                if (playerBox.intersectsBox(spikeBox)) {
-                    alert('💥 اصطدمت بالشوك! حاول مرة أخرى.');
-                    player.position.set(0, 0.75, 0); // إعادة من البداية
+            const pupilGeo = new THREE.BoxGeometry(0.1, 0.15, 0.11);
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const p1 = new THREE.Mesh(pupilGeo, pupilMat);
+            const p2 = new THREE.Mesh(pupilGeo, pupilMat);
+            p1.position.set(-0.3, 0.2, -0.62);
+            p2.position.set(0.3, 0.2, -0.62);
+
+            playerGroup.add(eyeMesh1, eyeMesh2, p1, p2);
+            scene.add(playerGroup);
+        }
+
+        // --- إنشاء نقطة التفتيش (سهم مضيء) ---
+        function createCheckpoint(x, y, z) {
+            const group = new THREE.Group();
+            group.position.set(x, y, z);
+
+            // مجسم السهم يتكون من مخروط واسطوانة
+            const coneGeo = new THREE.ConeGeometry(0.6, 1, 8);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: 0x38bdf8, emissive: 0x0284c7, roughness: 0.3 
+            });
+            const cone = new THREE.Mesh(coneGeo, mat);
+            cone.rotation.x = Math.PI; // توجيه السهم لأسفل
+            cone.position.y = 1.2;
+
+            const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+            const pole = new THREE.Mesh(poleGeo, mat);
+            pole.position.y = 0.2;
+
+            group.add(cone, pole);
+            scene.add(group);
+
+            checkpoints.push({
+                mesh: group,
+                pos: { x, y: y + 1.5, z },
+                activated: false
+            });
+        }
+
+        // --- توليد المستويات (تزداد صعوبة وطولاً) ---
+        function buildLevel(levelNum) {
+            // تنظيف العناصر القديمة
+            platforms.forEach(p => scene.remove(p));
+            spikes.forEach(s => scene.remove(s));
+            checkpoints.forEach(c => scene.remove(c.mesh));
+            if (finishLine) scene.remove(finishLine);
+            
+            platforms = []; spikes = []; checkpoints = [];
+
+            // تحديد طول وصعوبة المستوى
+            const length = 15 + levelNum * 8; // يزداد طول المستوى بشكل تدريجي
+            let currentZ = 0;
+            let currentY = 0;
+
+            // منصة البداية
+            const startPlatform = createPlatform(0, 0, 0, 6, 1, 8, 0x334155);
+            
+            for (let i = 0; i < length; i++) {
+                const gap = 3 + Math.random() * (2 + levelNum * 0.2); // تزداد الفجوات مع المستوى
+                currentZ -= (5 + gap);
+                currentY += (Math.random() - 0.3) * (1.5 + levelNum * 0.1); // تغيرات في الارتفاع
+
+                const pWidth = Math.max(2.5, 6 - levelNum * 0.15); // تصغر المنصات كلما تقدمت
+                const pLength = Math.max(3, 8 - levelNum * 0.2);
+                
+                const plat = createPlatform((Math.random() - 0.5) * (levelNum * 0.8), currentY, currentZ, pWidth, 1, pLength, 0x1e293b);
+
+                // إضافة أشواك بناءً على صعوبة المستوى
+                if (i > 1 && Math.random() < 0.3 + (levelNum * 0.02)) {
+                    createSpike(plat.position.x, currentY + 0.8, currentZ, pWidth);
+                }
+
+                // إضافة نقطة تفتيش (سهم) كل عدة منصات
+                if (i > 0 && i % 8 === 0 && i < length - 1) {
+                    createCheckpoint(plat.position.x, currentY + 0.5, currentZ);
                 }
             }
 
-            // التحقق من الوصول للنهاية
-            if (player.position.z <= -93) {
-                alert('🎉 مبروك! لقد تجاوزت المتاهة والأشواك بنجاح!');
-                gameOver = true;
+            // منصة النهاية
+            currentZ -= 8;
+            const finishPlat = createPlatform(0, currentY, currentZ, 8, 1, 8, 0x15803d);
+            
+            // خط النهاية المضيء
+            const finishGeo = new THREE.BoxGeometry(6, 3, 0.2);
+            const finishMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x15803d });
+            finishLine = new THREE.Mesh(finishGeo, finishMat);
+            finishLine.position.set(0, currentY + 2, currentZ);
+            scene.add(finishLine);
+        }
+
+        function createPlatform(x, y, z, w, h, d, color) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+            scene.add(mesh);
+            platforms.push(mesh);
+            return mesh;
+        }
+
+        function createSpike(x, y, z, pWidth) {
+            const geo = new THREE.ConeGeometry(0.5, 1.2, 6);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+            const spike = new THREE.Mesh(geo, mat);
+            
+            // وضع الشوك في مكان عشوائي على المنصة
+            const offsetX = (Math.random() - 0.5) * (pWidth - 1);
+            spike.position.set(x + offsetX, y, z);
+            spike.castShadow = true;
+            scene.add(spike);
+            spikes.push(spike);
+        }
+
+        // --- بدء اللعبة من القائمة ---
+        function startGame() {
+            const name = document.getElementById('player-name-input').value || "البطل";
+            const color = document.getElementById('player-color-input').value;
+            currentLevel = parseInt(document.getElementById('level-select').value);
+
+            document.getElementById('hud-name').textContent = name;
+            document.getElementById('hud-level').textContent = currentLevel;
+            document.getElementById('menu').style.display = 'none';
+
+            if (!scene) initScene();
+
+            createPlayer(color);
+            buildLevel(currentLevel);
+            
+            // ضبط نقطة البدء الأولية
+            activeCheckpoint = { x: 0, y: 2, z: 0 };
+            respawnPlayer();
+
+            animate();
+        }
+
+        function respawnPlayer() {
+            playerGroup.position.set(activeCheckpoint.x, activeCheckpoint.y, activeCheckpoint.z);
+            velocity = { x: 0, y: 0, z: 0 };
+        }
+
+        function showCheckpointText() {
+            const msg = document.getElementById('checkpoint-msg');
+            msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        // --- حلقة الحركة والفيزياء (Game Loop) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 1. حركة اللاعب الأفقية
+            if (keys['arrowleft'] || keys['a']) velocity.x = -speed;
+            else if (keys['arrowright'] || keys['d']) velocity.x = speed;
+            else velocity.x = 0;
+
+            if (keys['arrowup'] || keys['w']) velocity.z = -speed;
+            else if (keys['arrowdown'] || keys['s']) velocity.z = speed;
+            else velocity.z = 0;
+
+            // تطبيق الجاذبية
+            velocity.y -= gravity;
+
+            // تحديث موقع اللاعب
+            playerGroup.position.x += velocity.x;
+            playerGroup.position.y += velocity.y;
+            playerGroup.position.z += velocity.z;
+
+            // إضافة تأثير انكماش/تمدد بسيط عند القفز للواقعية الديناميكية
+            if (!isGrounded) {
+                playerMesh.scale.set(0.9, 1.15, 0.9);
+            } else {
+                playerMesh.scale.set(1, 1, 1);
             }
+
+            // تدوير الأسهم الخاصة بنقاط التفتيش لإعطاء منظر جمالي
+            checkpoints.forEach(cp => {
+                cp.mesh.children[0].rotation.y += 0.03;
+            });
+
+            // 2. التحقق من التصادم مع المنصات
+            isGrounded = false;
+            const playerBox = new THREE.Box3().setFromObject(playerGroup);
+
+            for (let plat of platforms) {
+                const platBox = new THREE.Box3().setFromObject(plat);
+                
+                // التأكد مما إذا كان اللاعب يهبط فوق المنصة
+                if (playerBox.intersectsBox(platBox)) {
+                    if (velocity.y < 0 && playerGroup.position.y >= plat.position.y + 0.5) {
+                        playerGroup.position.y = plat.position.y + 1.1;
+                        velocity.y = 0;
+                        isGrounded = true;
+                    }
+                }
+            }
+
+            // 3. التحقق من نقاط التفتيش (السهم)
+            checkpoints.forEach(cp => {
+                const cpBox = new THREE.Box3().setFromObject(cp.mesh);
+                if (playerBox.intersectsBox(cpBox) && !cp.activated) {
+                    cp.activated = true;
+                    activeCheckpoint = { ...cp.pos };
+                    // تغيير لون السهم للأخضر للتأكيد
+                    cp.mesh.children[0].material.color.setHex(0x22c55e);
+                    cp.mesh.children[0].material.emissive.setHex(0x15803d);
+                    showCheckpointText();
+                }
+            });
+
+            // 4. التصادم مع الأشواك أو السقوط -> إعادة المحاولة
+            for (let spike of spikes) {
+                const spikeBox = new THREE.Box3().setFromObject(spike);
+                if (playerBox.intersectsBox(spikeBox)) {
+                    respawnPlayer();
+                    break;
+                }
+            }
+
+            if (playerGroup.position.y < -15) {
+                respawnPlayer();
+            }
+
+            // 5. الفوز والوصول لخط النهاية
+            if (finishLine) {
+                const finishBox = new THREE.Box3().setFromObject(finishLine);
+                if (playerBox.intersectsBox(finishBox)) {
+                    if (currentLevel < 20) {
+                        alert(`🎉 مبروك! أتممت المستوى ${currentLevel}`);
+                        currentLevel++;
+                        document.getElementById('hud-level').textContent = currentLevel;
+                        buildLevel(currentLevel);
+                        activeCheckpoint = { x: 0, y: 2, z: 0 };
+                        respawnPlayer();
+                    } else {
+                        alert('🏆 أسطوري! لقد أنهيت جميع المستويات الـ 20 بنجاح!');
+                        document.getElementById('menu').style.display = 'block';
+                    }
+                }
+            }
+
+            // 6. تتبع الكاميرا السلس للاعب
+            camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
+            camera.position.y += (playerGroup.position.y + 4 - camera.position.y) * 0.1;
+            camera.position.z += (playerGroup.position.z + 8 - camera.position.z) * 0.1;
+            camera.lookAt(playerGroup.position.x, playerGroup.position.y, playerGroup.position.z - 2);
 
             renderer.render(scene, camera);
         }
 
-        animate();
-
-        // إعادة ضبط الحجم عند تغيير حجم الشاشة
-        window.addEventListener('resize', () => {
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
     </script>
 </body>
 </html>
