@@ -1,6 +1,7 @@
-import React from "react";
 import { Canvas } from "@react-three/fiber";
-import Lights from "./Lights.jsx";
+
+import Lights from "./Lights";
+import Sky from "./Sky";
 
 export default function Scene() {
   return (
@@ -17,9 +18,13 @@ export default function Scene() {
           fov: 75,
         }}
       >
+        {/* السماء */}
+        <Sky />
+
+        {/* الإضاءة */}
         <Lights />
 
-        {/* أرضية */}
+        {/* الأرضية */}
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           receiveShadow
@@ -28,8 +33,11 @@ export default function Scene() {
           <meshStandardMaterial color="#4caf50" />
         </mesh>
 
-        {/* مكعب */}
-        <mesh position={[0, 1, 0]} castShadow>
+        {/* مكعب تجريبي */}
+        <mesh
+          position={[0, 1, 0]}
+          castShadow
+        >
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color="orange" />
         </mesh>
