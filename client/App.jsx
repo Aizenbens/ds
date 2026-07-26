@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function App() {
   return (
     <h1
@@ -13,7 +15,7 @@ export default function App() {
         fontFamily: "Arial",
       }}
     >
-     FROM WHO?
+      FROM WHO?
     </h1>
   );
 }
