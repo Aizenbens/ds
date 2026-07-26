@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What? - Ultimate Challenge</title>
+    <title>From What? - Ultimate Horror Experience</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { margin: 0; overflow: hidden; background: #010103; user-select: none; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #000; user-select: none; touch-action: none; }
         
         #menu {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(8, 8, 12, 0.95); padding: 20px;
+            background: rgba(6, 6, 10, 0.95); padding: 22px;
             border-radius: 20px; color: #f8fafc; text-align: center;
-            box-shadow: 0 0 50px rgba(220, 38, 38, 0.6);
+            box-shadow: 0 0 60px rgba(220, 38, 38, 0.7);
             border: 2px solid rgba(220, 38, 38, 0.8);
             z-index: 10; width: 92%; max-width: 460px; max-height: 95vh; overflow-y: auto;
-            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 10px;
+            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 12px;
         }
 
-        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 15px #991b1b; font-size: 28px; font-weight: 900; }
+        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 20px #991b1b; font-size: 28px; font-weight: 900; letter-spacing: 1px; }
         
         .preview-container {
-            width: 100%; height: 130px; background: #05070f; border-radius: 12px;
+            width: 100%; height: 130px; background: #030408; border-radius: 12px;
             border: 1px solid #1e293b; position: relative; overflow: hidden;
         }
 
@@ -86,15 +86,21 @@
         #vignette {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 2;
-            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8);
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.95);
             transition: box-shadow 0.2s ease;
         }
 
         #danger-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 3; opacity: 0;
-            background: radial-gradient(circle, transparent 40%, rgba(220, 38, 38, 0.4) 100%);
-            transition: opacity 0.3s ease;
+            background: radial-gradient(circle, transparent 30%, rgba(220, 38, 38, 0.6) 100%);
+            transition: opacity 0.2s ease;
+        }
+
+        #jumpscare-flash {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #990000; z-index: 99; opacity: 0; pointer-events: none;
+            transition: opacity 0.05s ease-in-out;
         }
 
         #win-modal {
@@ -137,6 +143,7 @@
 
     <div id="vignette"></div>
     <div id="danger-overlay"></div>
+    <div id="jumpscare-flash"></div>
     <div id="crosshair"></div>
 
     <div id="menu">
@@ -243,6 +250,7 @@
         let monsterGroup = null;
         let platforms = [], obstacles = [], coinItems = [], checkpoints = [], pressurePlates = [];
         let keyMesh = null, doorMesh = null;
+        let deathParticles = []; // مكعبات التفكك عند الموت
         
         let hasKey = false;
         let platePressed = false;
@@ -266,36 +274,62 @@
         let staminaExhausted = false;
 
         let audioCtx = null;
+        let lastHeartbeatTime = 0;
+        let lastFootstepTime = 0;
+
         const gravity = 0.015;
         let velocity = { x: 0, y: 0, z: 0 };
         let walkSpeed = 0.16;
         let runSpeed = 0.28;
         let crouchSpeed = 0.08;
         let jumpForce = 0.35;
-        let monsterSpeed = 0.12;
+        let monsterSpeed = 0.13;
         const keys = {};
 
         let pitch = 0, yaw = 0;
         const playerRadius = 0.25;
 
+        // تهيئة النظام الصوتي
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        function playSound(freq, type, duration) {
+        function playSound(freq, type, duration, gainVal = 0.08) {
             if (!audioCtx) return;
             try {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = type;
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + duration);
             } catch(e){}
+        }
+
+        function playJumpscareSound() {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.6);
+            } catch(e){}
+        }
+
+        function playHeartbeat() {
+            playSound(60, 'sine', 0.12, 0.25);
+            setTimeout(() => playSound(50, 'sine', 0.1, 0.2), 140);
         }
 
         function switchTab(tab) {
@@ -384,7 +418,7 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020308);
+            scene.background = new THREE.Color(0x010204);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
             
@@ -393,13 +427,13 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
             scene.add(ambientLight);
 
-            torchLight = new THREE.PointLight(0xffaa44, 3.0, 20);
+            torchLight = new THREE.PointLight(0xff8833, 2.5, 18);
             scene.add(torchLight);
 
-            torchSpot = new THREE.SpotLight(0xffcc66, 4.0, 30, Math.PI / 4, 0.5);
+            torchSpot = new THREE.SpotLight(0xffcc66, 3.5, 28, Math.PI / 4, 0.5);
             scene.add(torchSpot);
             scene.add(torchSpot.target);
 
@@ -451,22 +485,65 @@
             }
         }
 
+        // إنشاء وحش الرعب ثلاثي الأبعاد بأطراف طويلة وحركة مخيفة
         function createChasingMonster() {
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
 
-            const mat = new THREE.MeshStandardMaterial({ color: 0x110000, roughness: 0.1, emissive: 0x660000 });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.4, 1.4), mat); body.position.y = 1.7;
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), mat); head.position.y = 3.8;
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, emissive: 0x110000 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-            const eyes = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-            eyes.position.set(0, 3.9, -0.58);
+            // هيكل وحشي مجوف
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.8, 1.2), darkMat); body.position.y = 2.0;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), darkMat); head.position.y = 4.3;
 
-            monsterGroup.add(body, head, eyes);
+            // أذرع طويلة جداً
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armL.position.set(-1.1, 2.2, 0);
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armR.position.set(1.1, 2.2, 0);
+
+            // عيون حمراء مشعة
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat); eyeL.position.set(-0.3, 4.4, -0.6);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat); eyeR.position.set(0.3, 4.4, -0.6);
+
+            // ضوء أحمر خفيف يحيط بالوحش
+            const monsterLight = new THREE.PointLight(0xff0000, 2.0, 8);
+            monsterLight.position.set(0, 3.0, 0);
+
+            monsterGroup.add(body, head, armL, armR, eyeL, eyeR, monsterLight);
             monsterGroup.position.set(0, 0, 30);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.12 + ((currentLevel - 30) * 0.009);
+            monsterSpeed = 0.125 + ((currentLevel - 30) * 0.009);
+        }
+
+        // أنيميشن تفكك وتناثر المكعبات عند الموت أو السقوط
+        function spawnFractureExplosion(pos) {
+            const cubeCount = 28;
+            for (let i = 0; i < cubeCount; i++) {
+                const size = 0.15 + Math.random() * 0.25;
+                const mat = new THREE.MeshStandardMaterial({
+                    color: Math.random() > 0.5 ? 0xef4444 : 0x0284c7,
+                    roughness: 0.5
+                });
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), mat);
+                mesh.position.set(
+                    pos.x + (Math.random() - 0.5) * 0.8,
+                    pos.y + Math.random() * 1.5,
+                    pos.z + (Math.random() - 0.5) * 0.8
+                );
+
+                scene.add(mesh);
+
+                deathParticles.push({
+                    mesh,
+                    vel: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.3,
+                        Math.random() * 0.25 + 0.1,
+                        (Math.random() - 0.5) * 0.3
+                    ),
+                    life: 1.0
+                });
+            }
         }
 
         function createCoin(x, y, z) {
@@ -539,8 +616,8 @@
         }
 
         function buildMazeLevel(levelNum) {
-            ambientLight.intensity = 0.15;
-            scene.fog = new THREE.FogExp2(0x020308, 0.035);
+            ambientLight.intensity = 0.12;
+            scene.fog = new THREE.FogExp2(0x010204, 0.04);
 
             const cellSize = 10;
             const gridCount = 7 + Math.floor((levelNum - 30) * 0.8);
@@ -567,7 +644,6 @@
             createCheckpoint(0, 0, 0);
             createPressurePlate(cellSize * 2.5, 0, cellSize * 2.5);
 
-            // زيادة صعوبة المفتاح بوضعه في زاوية معقدة بعيدة
             keyMesh = new THREE.Mesh(
                 new THREE.TorusGeometry(0.5, 0.12, 8, 16),
                 new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04 })
@@ -577,7 +653,6 @@
             keyMesh.position.set(keyX, 1.2, keyZ);
             scene.add(keyMesh);
 
-            // عملة جني داخل المتاهة
             createCoin(keyX + 2, 0, keyZ);
 
             doorMesh = new THREE.Mesh(
@@ -590,10 +665,9 @@
             const doorBox = new THREE.Box3().setFromObject(doorMesh);
             obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
 
-            showToast("💀 المتاهة معقدة جداً والمفتاح في زاوية مخفية! ابحث جيداً!");
+            showToast("💀 المتاهة مظلمة ومعقدة! تجنب الوحش واعثر على المفتاح!");
         }
 
-        // تطوير الباركور لجشعه أصعب بشكل ملحوظ
         function buildCaveLevel(levelNum) {
             platforms.forEach(p => scene.remove(p.mesh));
             obstacles.forEach(o => scene.remove(o.mesh));
@@ -616,8 +690,8 @@
                 return;
             }
 
-            ambientLight.intensity = 0.4;
-            scene.fog = new THREE.FogExp2(0x020208, 0.015);
+            ambientLight.intensity = 0.3;
+            scene.fog = new THREE.FogExp2(0x010204, 0.018);
 
             const mapLength = 15 + Math.floor(levelNum * 1.5);
             let currentZ = 0, currentY = 0, currentX = 0;
@@ -625,14 +699,12 @@
             createWallOrPlatform(0, 0, 0, 8, 1.4, 8, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
-                // زيادة المسافات لتصعيب القفز بالباركور
                 const gapZ = 6.8 + (levelNum * 0.12); 
                 const stepY = (Math.sin(i * 0.8) * (1.2 + levelNum * 0.03)); 
                 const shiftX = (Math.cos(i * 0.7) * (4.2 + levelNum * 0.1)); 
 
                 currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
-                // تصغير حجم المنصات تدريجياً
                 const pWidth = Math.max(2.2, 5.0 - (levelNum * 0.09));
                 createWallOrPlatform(currentX, currentY, currentZ, pWidth, 1.0, pWidth, 0x1e293b);
 
@@ -672,18 +744,28 @@
             animate();
         }
 
+        // تحسين الرعب وأنيميشن التفكك عند الموت
         function triggerDeathAnimation() {
             if (isDying) return;
             isDying = true;
             deathsCount++;
             localStorage.setItem('fw_deaths', deathsCount);
             document.getElementById('hud-deaths').textContent = deathsCount;
-            playSound(110, 'sawtooth', 0.4);
+
+            playJumpscareSound();
+
+            // فلاش أحمر سريع
+            const flash = document.getElementById('jumpscare-flash');
+            flash.style.opacity = '0.9';
+            setTimeout(() => flash.style.opacity = '0', 150);
+
+            // إطلاق انفجار المكعبات والمتناثرات
+            spawnFractureExplosion(playerGroup.position);
             
             setTimeout(() => {
                 isDying = false;
                 respawnPlayer();
-            }, 300);
+            }, 750);
         }
 
         function respawnPlayer() {
@@ -708,7 +790,6 @@
             confetti({ particleCount: 120, spread: 80 });
             playSound(580, 'sine', 0.4);
 
-            // حساب التوقيت المستهدف والمكافأة (10 ثوانٍ + ثانيتين لكل مستوى)
             const targetTime = 10 + (currentLevel - 1) * 2;
             const finishTime = parseFloat(levelElapsedTime.toFixed(1));
             
@@ -720,7 +801,7 @@
                 document.getElementById('hud-coins').textContent = coinsCount;
                 rewardMsg = `⚡ أداء أسطوري! أنهيت المستوى في أقل من ${targetTime} ثانية وحصلت على +10 عملات! 🎉`;
             } else {
-                rewardMsg = `الوقت المستهدف للحصول على عملات هو ${targetTime} ثانية. حاول مجدداً لاحقاً!`;
+                rewardMsg = `الوقت المستهدف للحصول على عملات هو ${targetTime} ثانية. حاول مجدداً!`;
             }
 
             document.getElementById('win-stats').textContent = `الوقت المستغرق: ${finishTime} ثانية`;
@@ -747,17 +828,30 @@
 
         function animate() {
             requestAnimationFrame(animate);
+
+            // تحديث حركة مكعبات التفكك في الهواء عند الموت
+            for (let i = deathParticles.length - 1; i >= 0; i--) {
+                let p = deathParticles[i];
+                p.mesh.position.add(p.vel);
+                p.vel.y -= 0.012; // جاذبية المكعبات المتناثرة
+                p.life -= 0.025;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    deathParticles.splice(i, 1);
+                }
+            }
+
             if (isDying) { renderer.render(scene, camera); return; }
 
             const delta = 0.016;
+            const now = performance.now();
 
-            // تحديث الوقت المنقضي
             if (isTimerRunning) {
-                levelElapsedTime = (performance.now() - levelStartTime) / 1000;
+                levelElapsedTime = (now - levelStartTime) / 1000;
                 document.getElementById('hud-timer').textContent = levelElapsedTime.toFixed(1);
             }
 
-            // حركة العملات وتدويرها وتجميعها
+            // حركة وتدوير العملات
             for (let ci of coinItems) {
                 if (!ci.collected) {
                     ci.mesh.rotation.z += 0.04;
@@ -800,16 +894,26 @@
                 }
             }
 
+            // ذكاء اصطناعي ومطاردة الوحش المرعبة مع مؤثرات الصوت ونبضات القلب
             if (monsterGroup && playerGroup) {
                 const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
                 
+                // نبضات خوف حمراء وتسارع صوت نبض القلب عند الاقتراب
                 const dangerOverlay = document.getElementById('danger-overlay');
-                if (distToMonster < 15) {
-                    dangerOverlay.style.opacity = (1 - distToMonster / 15).toFixed(2);
+                if (distToMonster < 18) {
+                    const intensity = (1 - distToMonster / 18);
+                    dangerOverlay.style.opacity = intensity.toFixed(2);
+
+                    const heartbeatDelay = 300 + (distToMonster * 40); // يسرع الصوت كلما اقترب
+                    if (now - lastHeartbeatTime > heartbeatDelay) {
+                        playHeartbeat();
+                        lastHeartbeatTime = now;
+                    }
                 } else {
                     dangerOverlay.style.opacity = "0";
                 }
 
+                // حركة المطاردة للوحش مع ارتعاش مخيف
                 let dirX = playerGroup.position.x - monsterGroup.position.x;
                 let dirZ = playerGroup.position.z - monsterGroup.position.z;
                 let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
@@ -818,10 +922,10 @@
                     monsterGroup.position.x += (dirX / len) * monsterSpeed;
                     monsterGroup.position.z += (dirZ / len) * monsterSpeed;
                 }
-                monsterGroup.position.y = playerGroup.position.y - 0.2;
+                monsterGroup.position.y = playerGroup.position.y - 0.2 + (Math.sin(now * 0.01) * 0.1); // ارتعاش حركي
 
                 if (distToMonster < 1.6) {
-                    showToast("💀 نالك الوحش!");
+                    showToast("💀 الإمساك بك بواسطة الوحش!");
                     triggerDeathAnimation();
                 }
             }
@@ -865,7 +969,14 @@
             if (keys['d'] || keys['arrowright']) moveVector.add(right);
             if (keys['a'] || keys['arrowleft']) moveVector.sub(right);
 
-            if (moveVector.lengthSq() > 0) moveVector.normalize().multiplyScalar(moveSpeed);
+            if (moveVector.lengthSq() > 0) {
+                moveVector.normalize().multiplyScalar(moveSpeed);
+                // اصوات خطوات أثناء الحركة
+                if (isGrounded && now - lastFootstepTime > (isSprinting ? 260 : 400)) {
+                    playSound(150, 'triangle', 0.05, 0.04);
+                    lastFootstepTime = now;
+                }
+            }
 
             velocity.x += (moveVector.x - velocity.x) * 0.3;
             velocity.z += (moveVector.z - velocity.z) * 0.3;
@@ -910,10 +1021,19 @@
 
             playerGroup.position.set(tempX, tempY, tempZ);
 
-            const eyeHeight = isCrouching ? 0.8 : 1.5;
-            camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight, playerGroup.position.z);
+            // اهتزاز الكاميرا (Head Bobbing) أثناء المشي/الجري
+            let headBob = 0;
+            if (isGrounded && moveVector.lengthSq() > 0) {
+                headBob = Math.sin(now * (isSprinting ? 0.018 : 0.01)) * (isSprinting ? 0.08 : 0.04);
+            }
 
+            const eyeHeight = isCrouching ? 0.8 : 1.5;
+            camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight + headBob, playerGroup.position.z);
+
+            // تذبذب الضوء الإضافي (Flickering Flashlight Effect)
             if (torchLight && torchSpot) {
+                const flicker = (Math.random() - 0.5) * 0.2;
+                torchLight.intensity = 2.5 + flicker;
                 torchLight.position.set(camera.position.x, camera.position.y - 0.2, camera.position.z);
                 torchSpot.position.copy(camera.position);
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
