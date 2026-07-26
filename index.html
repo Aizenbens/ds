@@ -3,1110 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What? - Enhanced Horror Experience</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { margin: 0; overflow: hidden; background: #000; user-select: none; touch-action: none; }
-        
-        #menu {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(6, 6, 10, 0.95); padding: 22px;
-            border-radius: 20px; color: #f8fafc; text-align: center;
-            box-shadow: 0 0 60px rgba(220, 38, 38, 0.7);
-            border: 2px solid rgba(220, 38, 38, 0.8);
-            z-index: 10; width: 92%; max-width: 460px; max-height: 95vh; overflow-y: auto;
-            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 12px;
-        }
-
-        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 20px #991b1b; font-size: 26px; font-weight: 900; }
-        
-        .preview-container {
-            width: 100%; height: 130px; background: #030408; border-radius: 12px;
-            border: 1px solid #1e293b; position: relative; overflow: hidden;
-        }
-
-        .tabs { display: flex; gap: 8px; justify-content: center; }
-        .tab-btn {
-            flex: 1; padding: 8px; background: #1e293b; color: #94a3b8;
-            border: 1px solid #334155; border-radius: 10px; cursor: pointer; font-weight: bold;
-        }
-        .tab-btn.active { background: #ef4444; color: white; border-color: #f87171; }
-
-        .form-group { text-align: right; }
-        .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #94a3b8; font-size: 12px; }
-        .form-group input, .form-group select {
-            width: 100%; padding: 8px; border-radius: 10px; border: 1px solid #334155;
-            background: #0f172a; color: white; font-size: 13px; outline: none;
-        }
-
-        .color-row { display: flex; gap: 8px; }
-        .color-row div { flex: 1; }
-
-        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 5px; }
-        .shop-card {
-            background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 8px;
-            display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px;
-        }
-        .shop-card button {
-            background: #22c55e; border: none; color: white; padding: 4px 8px; border-radius: 6px;
-            cursor: pointer; font-weight: bold; font-size: 10px; width: 100%;
-        }
-
-        button.btn-main {
-            background: linear-gradient(135deg, #ef4444, #7f1d1d);
-            color: white; border: none; padding: 12px; border-radius: 12px;
-            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%;
-            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
-        }
-
-        #hud {
-            position: absolute; top: 12px; right: 12px; left: 12px;
-            display: flex; justify-content: space-between; pointer-events: none;
-            color: white; font-size: 11px; font-weight: bold; z-index: 5; flex-wrap: wrap; gap: 6px;
-        }
-
-        .hud-card {
-            background: rgba(10, 10, 15, 0.85); padding: 6px 10px;
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
-            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 5px;
-        }
-
-        #stamina-container {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            width: 220px; height: 10px; background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
-            overflow: hidden; pointer-events: none; z-index: 5;
-        }
-        #stamina-bar {
-            width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #facc15);
-            transition: width 0.1s linear;
-        }
-
-        #danger-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 3; opacity: 0;
-            background: radial-gradient(circle, transparent 30%, rgba(220, 38, 38, 0.6) 100%);
-            transition: opacity 0.2s ease;
-        }
-
-        #jumpscare-flash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #990000; z-index: 99; opacity: 0; pointer-events: none;
-            transition: opacity 0.05s ease-in-out;
-        }
-
-        #win-modal {
-            display: none; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(10, 10, 15, 0.95); padding: 25px;
-            border-radius: 20px; color: white; text-align: center;
-            border: 2px solid #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
-            z-index: 20; width: 85%; max-width: 360px;
-        }
-
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
-            transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
-            border: 2px solid rgba(255,255,255,0.6); border-radius: 50%;
-        }
-
-        #toast-msg {
-            position: absolute; top: 12%; left: 50%; transform: translate(-50%, -50%);
-            color: #facc15; font-size: 13px; font-weight: bold; opacity: 0;
-            transition: opacity 0.3s ease; pointer-events: none;
-            background: rgba(10, 10, 15, 0.95); padding: 8px 18px; border-radius: 10px;
-            border: 1px solid rgba(250, 204, 21, 0.5); z-index: 6; text-align: center;
-        }
-
-        .touch-btn {
-            position: absolute; z-index: 8; background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 50%;
-            display: none; justify-content: center; align-items: center;
-            font-weight: bold; user-select: none; backdrop-filter: blur(4px);
-        }
-        #btn-jump { bottom: 30px; right: 30px; width: 65px; height: 65px; font-size: 14px; }
-        #btn-run { bottom: 105px; right: 35px; width: 55px; height: 55px; font-size: 12px; }
-        #btn-crouch { bottom: 30px; right: 110px; width: 55px; height: 55px; font-size: 12px; }
-    </style>
+    <title>Escape The Unknown - المتاهة المضيئة</title>
+    
+    <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
     <div id="danger-overlay"></div>
-    <div id="jumpscare-flash"></div>
     <div id="crosshair"></div>
+    <div id="toast-msg"></div>
 
     <div id="menu">
-        <h1>🔥 مغامرة المغارة والمطاردة 🔥</h1>
-        
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('custom')">التخصيص</button>
-            <button class="tab-btn" onclick="switchTab('shop')">المتجر 🛒</button>
-        </div>
-
-        <div class="preview-container" id="shop-preview"></div>
-
-        <div id="tab-custom">
-            <div class="color-row">
-                <div class="form-group">
-                    <label>القميص:</label>
-                    <input type="color" id="shirt-color-input" value="#0284c7" onchange="updateShopPreview()">
-                </div>
-                <div class="form-group">
-                    <label>السروال:</label>
-                    <input type="color" id="pants-color-input" value="#1e3a8a" onchange="updateShopPreview()">
-                </div>
-                <div class="form-group">
-                    <label>البشرة:</label>
-                    <input type="color" id="skin-color-input" value="#fca5a5" onchange="updateShopPreview()">
-                </div>
-            </div>
-
-            <div class="color-row">
-                <div class="form-group">
-                    <label>المستوى (1 - 40):</label>
-                    <select id="level-select"></select>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-shop" style="display: none;">
-            <div class="shop-grid">
-                <div class="shop-card">
-                    <span>🔥 سكن الحمم</span>
-                    <span>100 عملة</span>
-                    <button onclick="buySkin('lava', 100)">شراء / تجهيز</button>
-                </div>
-                <div class="shop-card">
-                    <span>⚡ سكن البرق</span>
-                    <span>250 عملة</span>
-                    <button onclick="buySkin('lightning', 250)">شراء / تجهيز</button>
-                </div>
-                <div class="shop-card">
-                    <span>🗿 سكن الصخر</span>
-                    <span>400 عملة</span>
-                    <button onclick="buySkin('rock', 400)">شراء / تجهيز</button>
-                </div>
-            </div>
-        </div>
-
-        <button class="btn-main" onclick="startGame()">الهروب من الوحش 🏃‍♂️🔥</button>
+        <h1>👁️ البقاء على قيد الحياة 👁️</h1>
+        <p>اتبع الشموع المضيئة على الجدران لإيجاد طريقك. استخدم الباركور والسرعة للهرب من الوحش!</p>
+        <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
     <div id="hud">
-        <div class="hud-card">💀 الموت: <span id="hud-deaths" style="color: #ef4444;">0</span></div>
-        <div class="hud-card">🔑 المفتاح: <span id="hud-key" style="color: #ef4444;">❌</span></div>
-        <div class="hud-card">🚩 نقطة الحفظ: <span id="hud-cp" style="color: #ef4444;">لم تُفعل</span></div>
-        <div class="hud-card">💰 <span id="hud-coins" style="color: #facc15;">0</span></div>
-        <div class="hud-card">⏱️ <span id="hud-timer" style="color: #38bdf8;">00.0</span>s</div>
-        <div class="hud-card">📍 مرحلة: <span id="hud-level" style="color: #facc15;">1</span> / 40</div>
+        <div class="hud-card">
+            <span>⚡ الطاقة:</span>
+            <div class="bar-container"><div id="stamina-bar"></div></div>
+        </div>
+        <div class="hud-card">
+            <span>🔦 البطارية:</span>
+            <div class="bar-container"><div id="battery-bar"></div></div>
+        </div>
+        <div class="hud-card">
+            <span>🔑 الهدف:</span>
+            <span id="hud-status" style="color: #ef4444;">اتبع الشموع للمخرج</span>
+        </div>
     </div>
 
-    <div id="stamina-container">
-        <div id="stamina-bar"></div>
+    <div id="inventory-bar">
+        <div class="inv-slot active" id="slot-0">🔦</div>
+        <div class="inv-slot" id="slot-1">---</div>
+        <div class="inv-slot" id="slot-2">---</div>
     </div>
 
-    <div id="btn-jump" class="touch-btn">قفز</div>
-    <div id="btn-run" class="touch-btn">جري</div>
-    <div id="btn-crouch" class="touch-btn">انحناء</div>
-
-    <div id="win-modal">
-        <h2>🏆 نجوت بنجاح!</h2>
-        <p id="win-stats">الوقت: 0s</p>
-        <p id="win-reward" style="color: #facc15; font-weight: bold;"></p>
-        <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
+    <div id="controls-hint">
+        [W,A,S,D] حركة | [Click/Shift] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] تفاعل
     </div>
-
-    <div id="toast-msg"></div>
 
     <script>
-        let savedLevel = parseInt(localStorage.getItem('fw_level')) || 1;
-        let savedCoins = parseInt(localStorage.getItem('fw_coins')) || 0;
-        let savedDeaths = parseInt(localStorage.getItem('fw_deaths')) || 0;
-        let ownedSkins = JSON.parse(localStorage.getItem('fw_skins')) || ['default'];
-        let equippedSkin = localStorage.getItem('fw_equipped_skin') || 'default';
-
-        const levelSelect = document.getElementById('level-select');
-        for (let i = 1; i <= 40; i++) {
-            const opt = document.createElement('option');
-            opt.value = i; opt.textContent = i <= 30 ? `باركور ${i}` : `متاهة الرعب ${i - 30}`;
-            if (i === savedLevel) opt.selected = true;
-            levelSelect.appendChild(opt);
-        }
-
         let scene, camera, renderer;
-        let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
-        let playerGroup, torchLight, torchSpot, ambientLight;
-        let monsterGroup = null;
-        let platforms = [], obstacles = [], coinItems = [], boostItems = [], checkpoints = [], pressurePlates = [];
-        let keyMesh = null, doorMesh = null;
-        let deathParticles = [];
-        
-        let hasKey = false;
-        let platePressed = false;
-        let activeCheckpointPos = JSON.parse(localStorage.getItem('fw_active_cp')) || null;
-        let coinsCount = savedCoins;
-        let deathsCount = savedDeaths;
-        let isDying = false;
-        
-        let currentLevel = savedLevel;
-        let isGrounded = false;
-        let jumpsLeft = 1;
+        let playerGroup, flashlight, ambientLight;
+        let isGameStarted = false;
 
-        let levelStartTime = 0;
-        let levelElapsedTime = 0;
-        let isTimerRunning = false;
-
-        let maxStamina = 10.0; 
-        let currentStamina = maxStamina;
-        let isSprinting = false;
-        let isCrouching = false;
-        let staminaExhausted = false;
-        let isMouseDown = false;
-        let speedBoostTime = 0;
-
-        let audioCtx = null;
-        let lastHeartbeatTime = 0;
-        let lastFootstepTime = 0;
-
-        const gravity = 0.015;
-        let velocity = { x: 0, y: 0, z: 0 };
-        let walkSpeed = 0.16;
-        let runSpeed = 0.28;
-        let crouchSpeed = 0.08;
-        let jumpForce = 0.35;
-        let monsterSpeed = 0.10;
-        const keys = {};
-
-        let pitch = 0, yaw = 0;
-        const playerRadius = 0.25;
-        const monsterRadius = 0.6;
-
-        function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        function playSound(freq, type, duration, gainVal = 0.08) {
-            if (!audioCtx) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + duration);
-            } catch(e){}
-        }
-
-        function playJumpscareSound() {
-            if (!audioCtx) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.6);
-            } catch(e){}
-        }
-
-        function playHeartbeat() {
-            playSound(60, 'sine', 0.12, 0.25);
-            setTimeout(() => playSound(50, 'sine', 0.1, 0.2), 140);
-        }
-
-        function switchTab(tab) {
-            document.getElementById('tab-custom').style.display = tab === 'custom' ? 'block' : 'none';
-            document.getElementById('tab-shop').style.display = tab === 'shop' ? 'block' : 'none';
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
-        function buySkin(skinName, cost) {
-            if (ownedSkins.includes(skinName)) {
-                equippedSkin = skinName;
-                localStorage.setItem('fw_equipped_skin', equippedSkin);
-                showToast("تم تجهيز السكن!");
-                updateShopPreview();
-                return;
-            }
-
-            if (coinsCount >= cost) {
-                coinsCount -= cost;
-                ownedSkins.push(skinName);
-                equippedSkin = skinName;
-                localStorage.setItem('fw_coins', coinsCount);
-                localStorage.setItem('fw_skins', JSON.stringify(ownedSkins));
-                localStorage.setItem('fw_equipped_skin', equippedSkin);
-                document.getElementById('hud-coins').textContent = coinsCount;
-                showToast("تم شراء السكن بنجاح! 🎉");
-                updateShopPreview();
-            } else {
-                showToast("العملات غير كافية!");
-            }
-        }
-
-        function initShopPreview() {
-            const container = document.getElementById('shop-preview');
-            previewScene = new THREE.Scene();
-            previewScene.background = new THREE.Color(0x05070f);
-
-            previewCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-            previewCamera.position.set(0, 1.3, 3.2);
-
-            previewRenderer = new THREE.WebGLRenderer({ antialias: true });
-            previewRenderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(previewRenderer.domElement);
-
-            const light = new THREE.DirectionalLight(0xffffff, 1.2);
-            light.position.set(2, 4, 3);
-            previewScene.add(light);
-            previewScene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-            updateShopPreview();
-            animateShopPreview();
-        }
-
-        function buildMinecraftPlayerMesh() {
-            const group = new THREE.Group();
-            let skinColor = document.getElementById('skin-color-input').value;
-            let shirtColor = document.getElementById('shirt-color-input').value;
-            let pantsColor = document.getElementById('pants-color-input').value;
-
-            if (equippedSkin === 'lava') { skinColor = "#ef4444"; shirtColor = "#7f1d1d"; pantsColor = "#450a0a"; }
-            else if (equippedSkin === 'lightning') { skinColor = "#38bdf8"; shirtColor = "#0284c7"; pantsColor = "#0f172a"; }
-            else if (equippedSkin === 'rock') { skinColor = "#94a3b8"; shirtColor = "#475569"; pantsColor = "#1e293b"; }
-
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: skinColor }));
-            head.position.y = 1.5;
-
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.35), new THREE.MeshStandardMaterial({ color: shirtColor }));
-            torso.position.y = 0.8;
-
-            group.add(head, torso);
-            return group;
-        }
-
-        function updateShopPreview() {
-            if (previewPlayerGroup) previewScene.remove(previewPlayerGroup);
-            previewPlayerGroup = buildMinecraftPlayerMesh();
-            previewScene.add(previewPlayerGroup);
-        }
-
-        function animateShopPreview() {
-            requestAnimationFrame(animateShopPreview);
-            if (previewPlayerGroup) previewPlayerGroup.rotation.y += 0.02;
-            if (previewRenderer) previewRenderer.render(previewScene, previewCamera);
+        function showToast(text) {
+            const msg = document.getElementById('toast-msg');
+            msg.textContent = text;
+            msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2500);
         }
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0d14);
+            scene.background = new THREE.Color(0x0a0a10); // خلفية أوضح قليلاً
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+            // زيادة الإضاءة المحيطة لتسهيل رؤية الخريطة
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.45); 
             scene.add(ambientLight);
 
-            torchLight = new THREE.PointLight(0xffaa55, 3.5, 25);
-            scene.add(torchLight);
+            // المصباح اليدوي
+            flashlight = new THREE.SpotLight(0xfffaed, 6, 50, Math.PI / 3, 0.4);
+            scene.add(flashlight);
+            scene.add(flashlight.target);
 
-            torchSpot = new THREE.SpotLight(0xffeeaa, 4.5, 35, Math.PI / 3, 0.4);
-            scene.add(torchSpot);
-            scene.add(torchSpot.target);
-
-            // إضافة التفاعل مع زر الماوس للجري
-            window.addEventListener('mousedown', (e) => {
-                initAudio();
-                if (e.button === 0) isMouseDown = true; // Left Mouse Click
-                if (document.pointerLockElement !== document.body) {
-                    try { document.body.requestPointerLock(); } catch(e){}
-                }
-            });
-
-            window.addEventListener('mouseup', (e) => {
-                if (e.button === 0) isMouseDown = false;
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (document.pointerLockElement === document.body) {
-                    yaw -= e.movementX * 0.0025;
-                    pitch -= e.movementY * 0.0025;
-                    pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-                }
-            });
-
-            window.addEventListener('keydown', e => {
-                initAudio();
-                const key = e.key.toLowerCase();
-                keys[key] = true;
-                if (key === 'c') isCrouching = !isCrouching;
-                if (e.code === 'Space' && !isDying) simulateJump();
-            });
-
-            window.addEventListener('keyup', e => {
-                keys[e.key.toLowerCase()] = false;
-            });
-
-            if ('ontouchstart' in window) {
-                document.querySelectorAll('.touch-btn').forEach(btn => btn.style.display = 'flex');
-                document.getElementById('btn-jump').ontouchstart = (e) => { e.preventDefault(); simulateJump(); };
-                document.getElementById('btn-run').ontouchstart = (e) => { e.preventDefault(); isMouseDown = true; };
-                document.getElementById('btn-run').ontouchend = (e) => { e.preventDefault(); isMouseDown = false; };
-                document.getElementById('btn-crouch').ontouchstart = (e) => { e.preventDefault(); isCrouching = !isCrouching; };
-            }
-
-            window.addEventListener('resize', onWindowResize);
-        }
-
-        function simulateJump() {
-            const maxAllowedJumps = currentLevel > 30 ? 1 : 2;
-            if (isGrounded) {
-                velocity.y = jumpForce; isGrounded = false; jumpsLeft = maxAllowedJumps - 1;
-                playSound(280, 'square', 0.12);
-            } else if (jumpsLeft > 0) {
-                velocity.y = jumpForce * 0.8; jumpsLeft--;
-                playSound(380, 'triangle', 0.15);
-            }
-        }
-
-        function createChasingMonster() {
-            if (monsterGroup) scene.remove(monsterGroup);
-            monsterGroup = new THREE.Group();
-
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, emissive: 0x220000 });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.8, 1.2), darkMat); body.position.y = 2.0;
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), darkMat); head.position.y = 4.3;
-
-            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armL.position.set(-1.1, 2.2, 0);
-            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armR.position.set(1.1, 2.2, 0);
-
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat); eyeL.position.set(-0.3, 4.4, -0.6);
-            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat); eyeR.position.set(0.3, 4.4, -0.6);
-
-            const monsterLight = new THREE.PointLight(0xff0000, 3.0, 10);
-            monsterLight.position.set(0, 3.0, 0);
-
-            monsterGroup.add(body, head, armL, armR, eyeL, eyeR, monsterLight);
-            monsterGroup.position.set(0, 0, 25);
-            scene.add(monsterGroup);
-
-            monsterSpeed = 0.10 + ((currentLevel - 30) * 0.005);
-        }
-
-        function spawnFractureExplosion(pos) {
-            const cubeCount = 28;
-            for (let i = 0; i < cubeCount; i++) {
-                const size = 0.15 + Math.random() * 0.25;
-                const mat = new THREE.MeshStandardMaterial({
-                    color: Math.random() > 0.5 ? 0xef4444 : 0x0284c7,
-                    roughness: 0.5
-                });
-                const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), mat);
-                mesh.position.set(
-                    pos.x + (Math.random() - 0.5) * 0.8,
-                    pos.y + Math.random() * 1.5,
-                    pos.z + (Math.random() - 0.5) * 0.8
-                );
-
-                scene.add(mesh);
-
-                deathParticles.push({
-                    mesh,
-                    vel: new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.3,
-                        Math.random() * 0.25 + 0.1,
-                        (Math.random() - 0.5) * 0.3
-                    ),
-                    life: 1.0
-                });
-            }
-        }
-
-        function createCoin(x, y, z) {
-            const coinMesh = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.4, 0.4, 0.08, 16),
-                new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 })
-            );
-            coinMesh.rotation.x = Math.PI / 2;
-            coinMesh.position.set(x, y + 0.8, z);
-            scene.add(coinMesh);
-            coinItems.push({ mesh: coinMesh, pos: { x, y: y + 0.8, z }, collected: false });
-        }
-
-        // خريطة عنصر تسريع السرعة المؤقت (Speed Boost Crystal ⚡)
-        function createSpeedBoostItem(x, y, z) {
-            const boostMesh = new THREE.Mesh(
-                new THREE.OctahedronGeometry(0.5, 0),
-                new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, roughness: 0.1 })
-            );
-            boostMesh.position.set(x, y + 0.9, z);
-            scene.add(boostMesh);
-            boostItems.push({ mesh: boostMesh, pos: { x, y: y + 0.9, z }, collected: false });
-        }
-
-        function createCandleOnWall(x, y, z) {
-            const torchGroup = new THREE.Group();
-            
-            const holder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x854d0e }));
-            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
-            flame.position.y = 0.35;
-
-            const candleLight = new THREE.PointLight(0xffaa22, 2.5, 12);
-            candleLight.position.y = 0.4;
-
-            torchGroup.add(holder, flame, candleLight);
-            torchGroup.position.set(x, y, z);
-            scene.add(torchGroup);
-        }
-
-        function createWallOrPlatform(x, y, z, w, h, d, colorHex, isWall = false) {
-            const mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(w, h, d),
-                new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 })
-            );
-            mesh.position.set(x, y, z);
-            scene.add(mesh);
-
-            const boundingBox = new THREE.Box3().setFromObject(mesh);
-            const objData = { mesh, box: boundingBox, min: boundingBox.min, max: boundingBox.max, isWall };
-
-            if (isWall) obstacles.push(objData);
-            else platforms.push(objData);
-
-            return mesh;
-        }
-
-        function createPressurePlate(x, y, z) {
-            const plate = new THREE.Mesh(
-                new THREE.BoxGeometry(1.6, 0.1, 1.6),
-                new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x7f1d1d })
-            );
-            plate.position.set(x, y + 0.05, z);
-            scene.add(plate);
-            pressurePlates.push({ mesh: plate, pressed: false, pos: { x, y, z } });
-        }
-
-        function createCheckpoint(x, y, z) {
-            const cpGroup = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-            flag.position.y = 1.1;
-
-            const flagTop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            flagTop.position.set(0.35, 1.9, 0); flagTop.name = "cpFlag";
-
-            cpGroup.add(base, flag, flagTop);
-            cpGroup.position.set(x, y, z);
-            scene.add(cpGroup);
-
-            checkpoints.push({ group: cpGroup, pos: { x, y: y + 1.2, z }, activated: false });
-        }
-
-        function buildMazeLevel(levelNum) {
-            ambientLight.intensity = 0.35;
-            scene.fog = new THREE.FogExp2(0x0a0d14, 0.015);
-
-            const cellSize = 8;
-            const gridCount = 5 + Math.floor((levelNum - 30) * 0.4);
-
-            createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x334155);
-
-            for (let r = 0; r < gridCount; r++) {
-                for (let c = 0; c < gridCount; c++) {
-                    let rx = (r - gridCount / 2) * cellSize + cellSize / 2;
-                    let rz = (c - gridCount / 2) * cellSize + cellSize / 2;
-
-                    if (Math.abs(r - Math.floor(gridCount / 2)) <= 1 && Math.abs(c - Math.floor(gridCount / 2)) <= 1) continue; 
-
-                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.45) {
-                        createWallOrPlatform(rx, 3, rz, cellSize - 1.5, 6, cellSize - 1.5, 0x1e293b, true);
-                        
-                        if (Math.random() < 0.35) {
-                            createCandleOnWall(rx, 2.5, rz + (cellSize - 1.5)/2 + 0.1);
-                        }
+            // إصلاح خطأ PointerLock المستمر
+            window.addEventListener('click', () => {
+                if (isGameStarted && document.pointerLockElement !== document.body) {
+                    try {
+                        document.body.requestPointerLock();
+                    } catch (err) {
+                        console.log("Pointer lock waiting...");
                     }
                 }
-            }
+            });
 
-            createCheckpoint(0, 0, 0);
-            createPressurePlate(cellSize * 1.5, 0, cellSize * 1.5);
-
-            keyMesh = new THREE.Mesh(
-                new THREE.TorusGeometry(0.5, 0.12, 8, 16),
-                new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04 })
-            );
-            const keyX = -(gridCount / 2 - 1) * cellSize;
-            const keyZ = (gridCount / 2 - 1) * cellSize;
-            keyMesh.position.set(keyX, 1.2, keyZ);
-            scene.add(keyMesh);
-
-            createCoin(keyX + 2, 0, keyZ);
-            createSpeedBoostItem(keyX - 2, 0, keyZ);
-
-            doorMesh = new THREE.Mesh(
-                new THREE.BoxGeometry(cellSize - 2, 6, 0.8),
-                new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.3 })
-            );
-            doorMesh.position.set(0, 3, -(gridCount / 2) * cellSize + 2);
-            scene.add(doorMesh);
-            
-            const doorBox = new THREE.Box3().setFromObject(doorMesh);
-            obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
-
-            showToast("🕯️ اضغط الماوس للجري، واجمع البلورة الزرقاء ⚡ للسرعة الخارقة!");
+            createCandlesAndMaze();
         }
 
-        function buildCaveLevel(levelNum) {
-            platforms.forEach(p => scene.remove(p.mesh));
-            obstacles.forEach(o => scene.remove(o.mesh));
-            checkpoints.forEach(c => scene.remove(c.group));
-            coinItems.forEach(ci => scene.remove(ci.mesh));
-            boostItems.forEach(bi => scene.remove(bi.mesh));
-            pressurePlates.forEach(pp => scene.remove(pp.mesh));
-            if (keyMesh) scene.remove(keyMesh);
-            if (doorMesh) scene.remove(doorMesh);
+        // إضافة الشموع والمتاهة المضيئة
+        function createCandlesAndMaze() {
+            const floor = new THREE.Mesh(
+                new THREE.BoxGeometry(100, 1, 100),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
+            );
+            floor.position.set(0, -0.5, 0);
+            scene.add(floor);
 
-            platforms = []; obstacles = []; checkpoints = []; coinItems = []; boostItems = []; pressurePlates = [];
-            hasKey = false; platePressed = false; activeCheckpointPos = null;
-            document.getElementById('hud-key').textContent = "❌";
-            document.getElementById('hud-cp').textContent = "لم تُفعل";
-            document.getElementById('hud-cp').style.color = "#ef4444";
-            document.getElementById('hud-deaths').textContent = deathsCount;
+            // مواضع الشموع المضيئة لإرشاد اللاعب
+            const candlePositions = [
+                { x: 0, z: 15 }, { x: -10, z: 0 }, { x: 10, z: -10 }, { x: 0, z: -25 }
+            ];
 
-            if (levelNum > 30) {
-                buildMazeLevel(levelNum);
-                createChasingMonster();
-                return;
-            }
+            candlePositions.forEach(pos => {
+                // شعلة شمعة
+                const candleLight = new THREE.PointLight(0xff7700, 3, 12);
+                candleLight.position.set(pos.x, 2, pos.z);
+                scene.add(candleLight);
 
-            ambientLight.intensity = 0.45;
-            scene.fog = new THREE.FogExp2(0x0a0d14, 0.012);
-
-            const mapLength = 15 + Math.floor(levelNum * 1.5);
-            let currentZ = 0, currentY = 0, currentX = 0;
-
-            createWallOrPlatform(0, 0, 0, 8, 1.4, 8, 0x1e293b);
-
-            for (let i = 0; i < mapLength; i++) {
-                const gapZ = 6.8 + (levelNum * 0.12); 
-                const stepY = (Math.sin(i * 0.8) * (1.2 + levelNum * 0.03)); 
-                const shiftX = (Math.cos(i * 0.7) * (4.2 + levelNum * 0.1)); 
-
-                currentZ -= gapZ; currentY += stepY; currentX = shiftX;
-
-                const pWidth = Math.max(2.2, 5.0 - (levelNum * 0.09));
-                createWallOrPlatform(currentX, currentY, currentZ, pWidth, 1.0, pWidth, 0x1e293b);
-
-                if (i % 3 === 0) createCoin(currentX, currentY + 0.6, currentZ);
-                if (i % 5 === 0) createSpeedBoostItem(currentX, currentY + 0.6, currentZ);
-                if (i > 0 && i % 8 === 0) createCheckpoint(currentX, currentY + 0.7, currentZ);
-            }
-
-            createWallOrPlatform(currentX, currentY, currentZ - 8, 10, 1.4, 10, 0x1e1b4b);
-            
-            const portal = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.25, 12, 24), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
-            portal.position.set(currentX, currentY + 3.2, currentZ - 8); portal.name = "finish";
-            scene.add(portal);
-
-            createChasingMonster();
+                // مجسم الشمعة المضيء
+                const candleMesh = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.1, 0.1, 0.6),
+                    new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+                );
+                candleMesh.position.set(pos.x, 1.8, pos.z);
+                scene.add(candleMesh);
+            });
         }
 
         function startGame() {
-            initAudio();
-            currentLevel = parseInt(document.getElementById('level-select').value);
-
-            document.getElementById('hud-level').textContent = currentLevel;
-            document.getElementById('hud-coins').textContent = coinsCount;
-            document.getElementById('hud-deaths').textContent = deathsCount;
             document.getElementById('menu').style.display = 'none';
-
-            if (!scene) initScene();
-
+            isGameStarted = true;
+            initScene();
+            
             playerGroup = new THREE.Group();
+            playerGroup.position.set(0, 1.8, 25);
             scene.add(playerGroup);
 
-            buildCaveLevel(currentLevel);
-            respawnPlayer();
+            try {
+                document.body.requestPointerLock();
+            } catch(e){}
 
-            levelStartTime = performance.now();
-            isTimerRunning = true;
-
-            animate();
+            showToast("⚠️ اتبع الشموع المضيئة للهروب!");
         }
-
-        function triggerDeathAnimation() {
-            if (isDying) return;
-            isDying = true;
-            deathsCount++;
-            localStorage.setItem('fw_deaths', deathsCount);
-            document.getElementById('hud-deaths').textContent = deathsCount;
-
-            playJumpscareSound();
-
-            const flash = document.getElementById('jumpscare-flash');
-            flash.style.opacity = '0.9';
-            setTimeout(() => flash.style.opacity = '0', 150);
-
-            spawnFractureExplosion(playerGroup.position);
-            
-            setTimeout(() => {
-                isDying = false;
-                respawnPlayer();
-            }, 750);
-        }
-
-        function respawnPlayer() {
-            if (activeCheckpointPos) {
-                playerGroup.position.set(activeCheckpointPos.x, activeCheckpointPos.y, activeCheckpointPos.z);
-            } else {
-                playerGroup.position.set(0, 1.8, 0);
-            }
-            velocity = { x: 0, y: 0, z: 0 };
-            yaw = 0; pitch = 0;
-            speedBoostTime = 0;
-            if (monsterGroup) monsterGroup.position.set(0, 0, 25);
-        }
-
-        function showToast(text) {
-            const msg = document.getElementById('toast-msg');
-            msg.textContent = text; msg.style.opacity = '1';
-            setTimeout(() => msg.style.opacity = '0', 2500);
-        }
-
-        function openWinModal() {
-            isTimerRunning = false;
-            confetti({ particleCount: 120, spread: 80 });
-            playSound(580, 'sine', 0.4);
-
-            const targetTime = 10 + (currentLevel - 1) * 2;
-            const finishTime = parseFloat(levelElapsedTime.toFixed(1));
-            
-            let rewardMsg = "تم إنهاء المرحلة!";
-            if (finishTime <= targetTime) {
-                const bonusCoins = 10;
-                coinsCount += bonusCoins;
-                localStorage.setItem('fw_coins', coinsCount);
-                document.getElementById('hud-coins').textContent = coinsCount;
-                rewardMsg = `⚡ أداء أسطوري! أنهيت المستوى في أقل من ${targetTime} ثانية وحصلت على +10 عملات! 🎉`;
-            } else {
-                rewardMsg = `الوقت المستهدف للحصول على عملات هو ${targetTime} ثانية. حاول مجدداً!`;
-            }
-
-            document.getElementById('win-stats').textContent = `الوقت المستغرق: ${finishTime} ثانية`;
-            document.getElementById('win-reward').textContent = rewardMsg;
-
-            localStorage.setItem('fw_level', Math.min(40, currentLevel + 1));
-            if (document.pointerLockElement) document.exitPointerLock();
-            document.getElementById('win-modal').style.display = 'block';
-        }
-
-        function nextLevelAction() {
-            document.getElementById('win-modal').style.display = 'none';
-            if (currentLevel < 40) {
-                currentLevel++;
-                document.getElementById('hud-level').textContent = currentLevel;
-                buildCaveLevel(currentLevel);
-                respawnPlayer();
-                levelStartTime = performance.now();
-                isTimerRunning = true;
-            } else {
-                document.getElementById('menu').style.display = 'flex';
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            for (let i = deathParticles.length - 1; i >= 0; i--) {
-                let p = deathParticles[i];
-                p.mesh.position.add(p.vel);
-                p.vel.y -= 0.012;
-                p.life -= 0.025;
-                if (p.life <= 0) {
-                    scene.remove(p.mesh);
-                    deathParticles.splice(i, 1);
-                }
-            }
-
-            if (isDying) { renderer.render(scene, camera); return; }
-
-            const delta = 0.016;
-            const now = performance.now();
-
-            if (isTimerRunning) {
-                levelElapsedTime = (now - levelStartTime) / 1000;
-                document.getElementById('hud-timer').textContent = levelElapsedTime.toFixed(1);
-            }
-
-            // تتبع عناصر التسريع المؤقت (Speed Boost Crystals)
-            if (speedBoostTime > 0) {
-                speedBoostTime -= delta;
-            }
-
-            for (let bi of boostItems) {
-                if (!bi.collected) {
-                    bi.mesh.rotation.y += 0.05;
-                    if (playerGroup.position.distanceTo(new THREE.Vector3(bi.pos.x, bi.pos.y, bi.pos.z)) < 1.2) {
-                        bi.collected = true;
-                        scene.remove(bi.mesh);
-                        speedBoostTime = 5.0; // 5 ثوانٍ من السرعة الفائقة
-                        playSound(1100, 'sine', 0.25);
-                        showToast("⚡ سرعة خارقة لمدة 5 ثوانٍ!");
-                    }
-                }
-            }
-
-            for (let ci of coinItems) {
-                if (!ci.collected) {
-                    ci.mesh.rotation.z += 0.04;
-                    if (playerGroup.position.distanceTo(new THREE.Vector3(ci.pos.x, ci.pos.y, ci.pos.z)) < 1.2) {
-                        ci.collected = true;
-                        scene.remove(ci.mesh);
-                        coinsCount += 1;
-                        localStorage.setItem('fw_coins', coinsCount);
-                        document.getElementById('hud-coins').textContent = coinsCount;
-                        playSound(900, 'sine', 0.15);
-                        showToast("💰 جمعت عملة ذهبية!");
-                    }
-                }
-            }
-
-            // دعم الجري من زر Shift أو زري الماوس الأيسر
-            const wantsToRun = keys['shift'] || keys['shiftleft'] || isMouseDown;
-            if (wantsToRun && !staminaExhausted && !isCrouching) {
-                isSprinting = true;
-                currentStamina -= delta;
-                if (currentStamina <= 0) {
-                    currentStamina = 0;
-                    staminaExhausted = true;
-                }
-            } else {
-                isSprinting = false;
-                if (currentStamina < maxStamina) {
-                    currentStamina += delta * 0.8;
-                    if (currentStamina >= maxStamina * 0.2) staminaExhausted = false;
-                }
-            }
-            document.getElementById('stamina-bar').style.width = `${(currentStamina / maxStamina) * 100}%`;
-
-            for (let pp of pressurePlates) {
-                if (!pp.pressed && playerGroup.position.distanceTo(new THREE.Vector3(pp.pos.x, pp.pos.y, pp.pos.z)) < 1.6) {
-                    pp.pressed = true;
-                    pp.mesh.material.color.setHex(0x22c55e);
-                    platePressed = true;
-                    playSound(500, 'square', 0.3);
-                    showToast("🟢 تم تفعيل الزر! يمكنك الآن أخذ المفتاح.");
-                }
-            }
-
-            // حركة وحش الرعب + منع اختراقه للجدران (Wall Collision Check for Monster)
-            if (monsterGroup && playerGroup) {
-                const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
-                
-                const dangerOverlay = document.getElementById('danger-overlay');
-                if (distToMonster < 18) {
-                    const intensity = (1 - distToMonster / 18);
-                    dangerOverlay.style.opacity = intensity.toFixed(2);
-
-                    const heartbeatDelay = 300 + (distToMonster * 40);
-                    if (now - lastHeartbeatTime > heartbeatDelay) {
-                        playHeartbeat();
-                        lastHeartbeatTime = now;
-                    }
-                } else {
-                    dangerOverlay.style.opacity = "0";
-                }
-
-                let dirX = playerGroup.position.x - monsterGroup.position.x;
-                let dirZ = playerGroup.position.z - monsterGroup.position.z;
-                let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
-                
-                if (len > 0) {
-                    let mStepX = (dirX / len) * monsterSpeed;
-                    let mStepZ = (dirZ / len) * monsterSpeed;
-
-                    // تطبيق الاصطدام للوحش مع الجدران لحمنعه من الدخول فيها
-                    let nextM_X = monsterGroup.position.x + mStepX;
-                    let nextM_Z = monsterGroup.position.z + mStepZ;
-
-                    let collideX = false, collideZ = false;
-
-                    for (let obs of obstacles) {
-                        if (nextM_X + monsterRadius > obs.min.x && nextM_X - monsterRadius < obs.max.x &&
-                            monsterGroup.position.z + monsterRadius > obs.min.z && monsterGroup.position.z - monsterRadius < obs.max.z) {
-                            collideX = true;
-                        }
-                        if (monsterGroup.position.x + monsterRadius > obs.min.x && monsterGroup.position.x - monsterRadius < obs.max.x &&
-                            nextM_Z + monsterRadius > obs.min.z && nextM_Z - monsterRadius < obs.max.z) {
-                            collideZ = true;
-                        }
-                    }
-
-                    if (!collideX) monsterGroup.position.x += mStepX;
-                    if (!collideZ) monsterGroup.position.z += mStepZ;
-                }
-                monsterGroup.position.y = playerGroup.position.y - 0.2 + (Math.sin(now * 0.01) * 0.1);
-
-                if (distToMonster < 1.6) {
-                    showToast("💀 الإمساك بك بواسطة الوحش!");
-                    triggerDeathAnimation();
-                }
-            }
-
-            for (let cp of checkpoints) {
-                if (!cp.activated && playerGroup.position.distanceTo(new THREE.Vector3(cp.pos.x, cp.pos.y, cp.pos.z)) < 2.0) {
-                    cp.activated = true;
-                    activeCheckpointPos = cp.pos;
-                    localStorage.setItem('fw_active_cp', JSON.stringify(activeCheckpointPos));
-                    cp.group.getObjectByName("cpFlag").material.color.setHex(0x22c55e);
-                    document.getElementById('hud-cp').textContent = "مفعلة 🟢";
-                    document.getElementById('hud-cp').style.color = "#22c55e";
-                    playSound(700, 'sine', 0.2);
-                    showToast("🚩 تم حفظ الموقع!");
-                }
-            }
-
-            if (keyMesh && playerGroup.position.distanceTo(keyMesh.position) < 2.0 && !hasKey) {
-                if (currentLevel > 30 && !platePressed) {
-                    showToast("⚠️ يجب تفعيل الزر الأرضي أولاً!");
-                } else {
-                    hasKey = true;
-                    scene.remove(keyMesh);
-                    document.getElementById('hud-key').textContent = "تم 🔑";
-                    document.getElementById('hud-key').style.color = "#22c55e";
-                    playSound(800, 'sine', 0.2);
-                    showToast("🔑 حصلت على المفتاح!");
-                }
-            }
-
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-            forward.y = 0; forward.normalize();
-            right.y = 0; right.normalize();
-
-            // حساب سرعة حركة اللاعب المحدثة (شاملة تأثير البلورة الزرقاء Speed Boost)
-            let currentBaseRunSpeed = speedBoostTime > 0 ? runSpeed * 1.4 : runSpeed;
-            let moveSpeed = isCrouching ? crouchSpeed : (isSprinting ? currentBaseRunSpeed : walkSpeed);
-            let moveVector = new THREE.Vector3(0, 0, 0);
-
-            if (keys['w'] || keys['arrowup']) moveVector.add(forward);
-            if (keys['s'] || keys['arrowdown']) moveVector.sub(forward);
-            if (keys['d'] || keys['arrowright']) moveVector.add(right);
-            if (keys['a'] || keys['arrowleft']) moveVector.sub(right);
-
-            if (moveVector.lengthSq() > 0) {
-                moveVector.normalize().multiplyScalar(moveSpeed);
-                if (isGrounded && now - lastFootstepTime > (isSprinting ? 240 : 380)) {
-                    playSound(150, 'triangle', 0.05, 0.04);
-                    lastFootstepTime = now;
-                }
-            }
-
-            velocity.x += (moveVector.x - velocity.x) * 0.3;
-            velocity.z += (moveVector.z - velocity.z) * 0.3;
-            velocity.y -= gravity;
-
-            let oldX = playerGroup.position.x;
-            let oldY = playerGroup.position.y;
-            let oldZ = playerGroup.position.z;
-
-            let tempX = oldX + velocity.x;
-            for (let obs of obstacles) {
-                if (obs.isDoor && hasKey && playerGroup.position.distanceTo(doorMesh.position) < 3.2) { openWinModal(); return; }
-                if (tempX + playerRadius > obs.min.x && tempX - playerRadius < obs.max.x &&
-                    oldZ + playerRadius > obs.min.z && oldZ - playerRadius < obs.max.z &&
-                    oldY + 1.8 > obs.min.y && oldY < obs.max.y) {
-                    tempX = oldX; velocity.x = 0; break;
-                }
-            }
-
-            let tempZ = oldZ + velocity.z;
-            for (let obs of obstacles) {
-                if (tempX + playerRadius > obs.min.x && tempX - playerRadius < obs.max.x &&
-                    tempZ + playerRadius > obs.min.z && tempZ - playerRadius < obs.max.z &&
-                    oldY + 1.8 > obs.min.y && oldY < obs.max.y) {
-                    tempZ = oldZ; velocity.z = 0; break;
-                }
-            }
-
-            let tempY = oldY + velocity.y;
-            isGrounded = false;
-            for (let plat of platforms) {
-                if (tempX + playerRadius > plat.min.x && tempX - playerRadius < plat.max.x &&
-                    tempZ + playerRadius > plat.min.z && tempZ - playerRadius < plat.max.z) {
-                    if (velocity.y <= 0 && oldY >= plat.max.y - 0.2 && tempY <= plat.max.y + 0.1) {
-                        tempY = plat.max.y;
-                        velocity.y = 0;
-                        isGrounded = true;
-                        jumpsLeft = currentLevel > 30 ? 1 : 2;
-                    }
-                }
-            }
-
-            playerGroup.position.set(tempX, tempY, tempZ);
-
-            let headBob = 0;
-            if (isGrounded && moveVector.lengthSq() > 0) {
-                headBob = Math.sin(now * (isSprinting ? 0.018 : 0.01)) * (isSprinting ? 0.08 : 0.04);
-            }
-
-            // تغيير زاوية رؤية الكاميرا (FOV Dynamic) لإعطاء تأثير السرعة
-            const targetFOV = isSprinting ? 85 : 75;
-            camera.fov += (targetFOV - camera.fov) * 0.1;
-            camera.updateProjectionMatrix();
-
-            const eyeHeight = isCrouching ? 0.8 : 1.5;
-            camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight + headBob, playerGroup.position.z);
-
-            if (torchLight && torchSpot) {
-                const flicker = (Math.random() - 0.5) * 0.2;
-                torchLight.intensity = 3.5 + flicker;
-                torchLight.position.set(camera.position.x, camera.position.y - 0.2, camera.position.z);
-                torchSpot.position.copy(camera.position);
-                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                torchSpot.target.position.copy(camera.position).add(dir);
-            }
-
-            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-            euler.x = pitch; euler.y = yaw;
-            camera.quaternion.setFromEuler(euler);
-
-            if (playerGroup.position.y < -12) triggerDeathAnimation();
-
-            const finishObj = scene.getObjectByName("finish");
-            if (finishObj && playerGroup.position.distanceTo(finishObj.position) < 2.5) {
-                openWinModal();
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        window.onload = initShopPreview;
     </script>
 </body>
 </html>
