@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 
 import Lights from "./Lights";
 import Sky from "./Sky";
-import Ground from "../world/Ground";
+import World from "../world/World";
 
 export default function Scene() {
   return (
@@ -22,17 +22,7 @@ export default function Scene() {
       >
         <Sky />
         <Lights />
-
-        <Ground />
-
-        {/* مكعب اختبار */}
-        <mesh
-          position={[0, 1, 0]}
-          castShadow
-        >
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="orange" />
-        </mesh>
+        <World />
       </Canvas>
     </div>
   );
