@@ -1,19 +1,27 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
+import Lights from "./Lights.jsx";
 
 export default function Scene() {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <Canvas camera={{ position: [0, 2, 6], fov: 75 }}>
-        <ambientLight intensity={1} />
-        <directionalLight position={[5, 10, 5]} intensity={2} />
+      <Canvas
+        shadows
+        camera={{
+          position: [0, 3, 8],
+          fov: 75,
+        }}
+      >
+        <Lights />
 
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        {/* أرضية مؤقتة */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#4caf50" />
         </mesh>
 
-        <mesh position={[0, 1, 0]}>
+        {/* مكعب تجريبي */}
+        <mesh position={[0, 1, 0]} castShadow>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color="orange" />
         </mesh>
