@@ -3,244 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - لعبة الرعب والباركور</title>
+    <title>Escape The Unknown - المتاهة المضيئة</title>
     
+    <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <style>
-        /* ==========================================================
-           1. الإعدادات العامة للشاشة والصفحة
-           ========================================================== */
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000000;
-            user-select: none;
-            touch-action: none;
-        }
-
-        /* ==========================================================
-           2. قائمة البداية (Start Menu)
-           ========================================================== */
-        #menu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(6, 6, 10, 0.95);
-            padding: 28px;
-            border-radius: 20px;
-            color: #f8fafc;
-            text-align: center;
-            box-shadow: 0 0 60px rgba(220, 38, 38, 0.8);
-            border: 2px solid rgba(220, 38, 38, 0.8);
-            z-index: 10;
-            width: 92%;
-            max-width: 500px;
-            backdrop-filter: blur(16px);
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        #menu h1 {
-            margin: 0;
-            color: #ef4444;
-            text-shadow: 0 0 20px #991b1b;
-            font-size: 28px;
-            font-weight: 900;
-        }
-
-        #menu p {
-            font-size: 13px;
-            color: #94a3b8;
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        .btn-main {
-            background: linear-gradient(135deg, #ef4444, #7f1d1d);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 100%;
-            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
-        }
-
-        .btn-main:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(239, 68, 68, 0.7);
-        }
-
-        /* ==========================================================
-           3. واجهة معلومات اللعب (HUD & Status Bars)
-           ========================================================== */
-        #hud {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            left: 15px;
-            display: flex;
-            justify-content: space-between;
-            pointer-events: none;
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 5;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .hud-card {
-            background: rgba(10, 10, 15, 0.85);
-            padding: 8px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .bar-container {
-            width: 130px;
-            height: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-            overflow: hidden;
-        }
-
-        #stamina-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #facc15, #eab308);
-            transition: width 0.1s linear;
-        }
-
-        #battery-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #38bdf8, #0284c7);
-            transition: width 0.1s linear;
-        }
-
-        /* ==========================================================
-           4. نظام حقيبة الأدوات (Inventory Bar)
-           ========================================================== */
-        #inventory-bar {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 12px;
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .inv-slot {
-            width: 55px;
-            height: 55px;
-            background: rgba(15, 23, 42, 0.85);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 22px;
-            backdrop-filter: blur(8px);
-            transition: all 0.2s ease;
-        }
-
-        .inv-slot.active {
-            border-color: #ef4444;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-            transform: scale(1.05);
-        }
-
-        /* ==========================================================
-           5. المؤثرات البصرية والتنبيهات (FX & Alerts)
-           ========================================================== */
-        #danger-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 3;
-            opacity: 0;
-            background: radial-gradient(circle, transparent 30%, rgba(220, 38, 38, 0.75) 100%);
-            transition: opacity 0.2s ease;
-        }
-
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 6px;
-            height: 6px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 4;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-        }
-
-        #toast-msg {
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #facc15;
-            font-size: 14px;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            background: rgba(10, 10, 15, 0.95);
-            padding: 10px 22px;
-            border-radius: 10px;
-            border: 1px solid rgba(250, 204, 21, 0.5);
-            z-index: 6;
-            text-align: center;
-        }
-
-        #controls-hint {
-            position: absolute;
-            bottom: 85px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
-            z-index: 5;
-            pointer-events: none;
-            text-align: center;
-            direction: ltr;
-        }
-    </style>
 </head>
 <body>
 
     <div id="danger-overlay"></div>
-
     <div id="crosshair"></div>
-
     <div id="toast-msg"></div>
 
     <div id="menu">
         <h1>👁️ البقاء على قيد الحياة 👁️</h1>
-        <p>استيقظت في مكان مجهول ومظلم.. الوحش يراقب، يسمع خطواتك، ويستشعر حركتك. استغلالك للباركور، المصباح اليدوي، والأدوات هو سبيلك الوحيد للهروب!</p>
+        <p>اتبع الشموع المضيئة على الجدران لإيجاد طريقك. استخدم الباركور والسرعة للهرب من الوحش!</p>
         <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
@@ -255,7 +31,7 @@
         </div>
         <div class="hud-card">
             <span>🔑 الهدف:</span>
-            <span id="hud-status" style="color: #ef4444;">ابحث عن المخرج</span>
+            <span id="hud-status" style="color: #ef4444;">اتبع الشموع للمخرج</span>
         </div>
     </div>
 
@@ -266,16 +42,99 @@
     </div>
 
     <div id="controls-hint">
-        [W,A,S,D] Movement | [Left Click / Shift] Sprint | [Space] Jump | [C] Slide/Crouch | [F] Flashlight | [E] Interact
+        [W,A,S,D] حركة | [Click/Shift] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] تفاعل
     </div>
 
     <script>
-        // إعدادات البداية ورسائل النظام مؤقتاً
+        let scene, camera, renderer;
+        let playerGroup, flashlight, ambientLight;
+        let isGameStarted = false;
+
         function showToast(text) {
             const msg = document.getElementById('toast-msg');
             msg.textContent = text;
             msg.style.opacity = '1';
             setTimeout(() => msg.style.opacity = '0', 2500);
+        }
+
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a10); // خلفية أوضح قليلاً
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // زيادة الإضاءة المحيطة لتسهيل رؤية الخريطة
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.45); 
+            scene.add(ambientLight);
+
+            // المصباح اليدوي
+            flashlight = new THREE.SpotLight(0xfffaed, 6, 50, Math.PI / 3, 0.4);
+            scene.add(flashlight);
+            scene.add(flashlight.target);
+
+            // إصلاح خطأ PointerLock المستمر
+            window.addEventListener('click', () => {
+                if (isGameStarted && document.pointerLockElement !== document.body) {
+                    try {
+                        document.body.requestPointerLock();
+                    } catch (err) {
+                        console.log("Pointer lock waiting...");
+                    }
+                }
+            });
+
+            createCandlesAndMaze();
+        }
+
+        // إضافة الشموع والمتاهة المضيئة
+        function createCandlesAndMaze() {
+            const floor = new THREE.Mesh(
+                new THREE.BoxGeometry(100, 1, 100),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
+            );
+            floor.position.set(0, -0.5, 0);
+            scene.add(floor);
+
+            // مواضع الشموع المضيئة لإرشاد اللاعب
+            const candlePositions = [
+                { x: 0, z: 15 }, { x: -10, z: 0 }, { x: 10, z: -10 }, { x: 0, z: -25 }
+            ];
+
+            candlePositions.forEach(pos => {
+                // شعلة شمعة
+                const candleLight = new THREE.PointLight(0xff7700, 3, 12);
+                candleLight.position.set(pos.x, 2, pos.z);
+                scene.add(candleLight);
+
+                // مجسم الشمعة المضيء
+                const candleMesh = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.1, 0.1, 0.6),
+                    new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+                );
+                candleMesh.position.set(pos.x, 1.8, pos.z);
+                scene.add(candleMesh);
+            });
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            isGameStarted = true;
+            initScene();
+            
+            playerGroup = new THREE.Group();
+            playerGroup.position.set(0, 1.8, 25);
+            scene.add(playerGroup);
+
+            try {
+                document.body.requestPointerLock();
+            } catch(e){}
+
+            showToast("⚠️ اتبع الشموع المضيئة للهروب!");
         }
     </script>
 </body>
