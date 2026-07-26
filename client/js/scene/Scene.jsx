@@ -1,12 +1,12 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
 
-import Lights from "./Lights";
-import Sky from "./Sky";
+import Lights from "./Lights.jsx";
+import Sky from "./Sky.jsx";
 
-import Physics from "../physics/Physics";
-import World from "../world/World";
-import Player from "../player/Player";
+import Physics from "../physics/Physics.jsx";
+import World from "../world/World.jsx";
+import Player from "../player/Player.jsx";
 
 export default function Scene() {
   return (
