@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - الباركور والوحش الذكي</title>
+    <title>Escape The Unknown - نظام الألغاز والهروب</title>
     
     <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -16,7 +16,7 @@
 
     <div id="menu">
         <h1>👁️ البقاء على قيد الحياة 👁️</h1>
-        <p>اتبع الشموع المضيئة على الجدران لإيجاد طريقك. استخدم الباركور والسرعة للهرب من الوحش!</p>
+        <p>ابحث عن البطاريات لشحن مصباحك، واعثر على المفتاح الذهبي لفتح باب المخرج النهائي قبل أن يمسك بك الوحش!</p>
         <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
@@ -31,36 +31,42 @@
         </div>
         <div class="hud-card">
             <span>🔑 الهدف:</span>
-            <span id="hud-status" style="color: #ef4444;">اتبع الشموع للمخرج</span>
+            <span id="hud-status" style="color: #ef4444;">ابحث عن المفتاح 🔑</span>
         </div>
     </div>
 
     <div id="inventory-bar">
         <div class="inv-slot active" id="slot-0">🔦</div>
-        <div class="inv-slot" id="slot-1">---</div>
-        <div class="inv-slot" id="slot-2">---</div>
+        <div class="inv-slot" id="slot-1">❌</div>
+        <div class="inv-slot" id="slot-2">❌</div>
     </div>
 
     <div id="controls-hint">
-        [W,A,S,D] حركة | [Click/Shift] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] تفاعل
+        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] التقاط / فتح
     </div>
 
     <script>
         let scene, camera, renderer;
         let playerGroup, flashlight, ambientLight;
         let monsterGroup = null;
+        let exitDoor = null;
         let isGameStarted = false;
 
-        // Player Stats & Physics
+        // Player Stats & Inventory
         let stamina = 100, battery = 100;
         let isFlashlightOn = true;
         let isSprinting = false, isCrouching = false, isGrounded = false;
+        let hasKey = false;
+        
         let velocity = { x: 0, y: 0, z: 0 };
         const gravity = 0.015;
         let yaw = 0, pitch = 0;
         const keys = {};
 
-        // Audio System & Detection
+        // Interactive Objects
+        let interactables = [];
+
+        // Audio System
         let audioCtx = null;
         let lastStepTime = 0, lastHeartbeat = 0;
 
@@ -109,7 +115,7 @@
             scene.add(flashlight);
             scene.add(flashlight.target);
 
-            // Controls listeners & Pointer Lock Fix
+            // Pointer Lock & Events
             window.addEventListener('mousedown', (e) => {
                 initAudio();
                 if (e.button === 0) keys['mousedown'] = true;
@@ -135,34 +141,37 @@
                 const key = e.key.toLowerCase();
                 keys[key] = true;
 
-                if (key === 'c') isCrouching = !isCrouching; // Slide / Crouch
+                if (key === 'c') isCrouching = !isCrouching;
                 if (key === 'f') {
                     isFlashlightOn = !isFlashlightOn;
                     playSound(400, 'square', 0.05);
                 }
-                if (e.code === 'Space' && isGrounded) { // Jump logic
+                if (e.code === 'Space' && isGrounded) {
                     velocity.y = 0.32;
                     isGrounded = false;
                     playSound(200, 'triangle', 0.1);
                 }
+                if (key === 'e') handleInteraction();
             });
 
             window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
             window.addEventListener('resize', onWindowResize);
 
-            createCandlesAndMaze();
+            createEnvironment();
             createSmartMonster();
         }
 
-        function createCandlesAndMaze() {
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
-
-            const floor = new THREE.Mesh(new THREE.BoxGeometry(100, 1, 100), floorMat);
+        function createEnvironment() {
+            // الأرضية
+            const floor = new THREE.Mesh(
+                new THREE.BoxGeometry(100, 1, 100),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
+            );
             floor.position.set(0, -0.5, 0);
             scene.add(floor);
 
-            // جدران المتاهة الميسرة
+            // جدران المتاهة
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
             const walls = [
                 { x: 0, z: -20, w: 40, h: 8, d: 2 },
                 { x: -15, z: 0, w: 2, h: 8, d: 30 },
@@ -193,6 +202,62 @@
                 candleMesh.position.set(pos.x, 2, pos.z);
                 scene.add(candleMesh);
             });
+
+            // إضافة الأدوات التفاعلية (بطارية ومفتاح)
+            createItem(-12, 1, -5, 'battery', 0x38bdf8);
+            createItem(12, 1, -15, 'key', 0xfacc15);
+
+            // باب المخرج المغلق
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.3 });
+            exitDoor = new THREE.Mesh(new THREE.BoxGeometry(4, 7, 0.5), doorMat);
+            exitDoor.position.set(0, 3.5, -19);
+            scene.add(exitDoor);
+        }
+
+        function createItem(x, y, z, type, color) {
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 })
+            );
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+            interactables.push({ mesh, type, pos: new THREE.Vector3(x, y, z) });
+        }
+
+        function handleInteraction() {
+            if (!playerGroup) return;
+
+            // التقاط الأدوات
+            interactables.forEach((item, index) => {
+                if (playerGroup.position.distanceTo(item.pos) < 2.8) {
+                    if (item.type === 'battery') {
+                        battery = Math.min(100, battery + 50);
+                        document.getElementById('slot-1').textContent = '🔋';
+                        showToast("🔋 تم جمع بطارية جديدة!");
+                    } else if (item.type === 'key') {
+                        hasKey = true;
+                        document.getElementById('slot-2').textContent = '🔑';
+                        document.getElementById('hud-status').textContent = "اذهب إلى المخرج النهائي! 🚪";
+                        document.getElementById('hud-status').style.color = "#22c55e";
+                        showToast("🔑 حصلت على المفتاح الرئيسي!");
+                    }
+                    scene.remove(item.mesh);
+                    interactables.splice(index, 1);
+                    playSound(600, 'sine', 0.15);
+                }
+            });
+
+            // فتح باب المخرج للهروب
+            if (exitDoor && playerGroup.position.distanceTo(exitDoor.position) < 3.5) {
+                if (hasKey) {
+                    showToast("🎉 مبروك! لقد نجحت في الهروب من اللعبة!");
+                    playSound(800, 'sine', 0.5);
+                    setTimeout(() => location.reload(), 2500);
+                } else {
+                    showToast("🔒 الباب مغلق! تحتاج إلى المفتاح الذهبي!");
+                    playSound(150, 'sawtooth', 0.2);
+                }
+            }
         }
 
         function createSmartMonster() {
@@ -219,7 +284,6 @@
             const dist = monsterGroup.position.distanceTo(playerGroup.position);
             const dangerOverlay = document.getElementById('danger-overlay');
 
-            // تأثير الرعب عند الاقتراب
             if (dist < 18) {
                 dangerOverlay.style.opacity = (1 - dist / 18).toFixed(2);
                 if (performance.now() - lastHeartbeat > dist * 45) {
@@ -230,9 +294,8 @@
                 dangerOverlay.style.opacity = 0;
             }
 
-            // حركة الوحش واكتشاف الصوت (الجري يزيد سرعته)
             let monsterSpeed = 0.07;
-            if (isSprinting) monsterSpeed = 0.15; // يسمع الجري ويطارد بلمح البصر!
+            if (isSprinting) monsterSpeed = 0.15;
 
             const dir = new THREE.Vector3().subVectors(playerGroup.position, monsterGroup.position);
             dir.y = 0;
@@ -240,7 +303,6 @@
 
             monsterGroup.position.add(dir.multiplyScalar(monsterSpeed));
 
-            // الامساك باللاعب
             if (dist < 1.8) {
                 showToast("💀 نالك الوحش!");
                 setTimeout(() => location.reload(), 1500);
@@ -260,7 +322,7 @@
 
             try { document.body.requestPointerLock(); } catch(e){}
 
-            showToast("⚠️ اتبع الشموع المضيئة للهروب!");
+            showToast("⚠️ اتبع الشموع واجمع المفتاح للهروب!");
             animate();
         }
 
@@ -270,7 +332,7 @@
             const now = performance.now();
             const wantsToRun = keys['shift'] || keys['mousedown'];
 
-            // Stamina & Sprinting
+            // Stamina
             if (wantsToRun && stamina > 0 && !isCrouching) {
                 isSprinting = true;
                 stamina = Math.max(0, stamina - 0.35);
@@ -280,7 +342,7 @@
             }
             document.getElementById('stamina-bar').style.width = stamina + '%';
 
-            // Flashlight & Battery
+            // Battery
             if (isFlashlightOn && battery > 0) {
                 battery = Math.max(0, battery - 0.02);
                 flashlight.intensity = (battery / 100) * 6;
@@ -289,7 +351,7 @@
             }
             document.getElementById('battery-bar').style.width = battery + '%';
 
-            // Movement Logic
+            // Movement Physics
             const moveSpeed = isCrouching ? 0.05 : (isSprinting ? 0.22 : 0.12);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -324,7 +386,7 @@
                 isGrounded = true;
             }
 
-            // Camera FOV Effects
+            // Camera adjustments
             camera.fov += ((isSprinting ? 88 : 75) - camera.fov) * 0.1;
             camera.updateProjectionMatrix();
 
