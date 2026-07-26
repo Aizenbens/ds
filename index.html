@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>روبلوكس 4D - النسخة الواقعية الاحترافية</title>
+    <title>روبلوكس 4D - نسخة الباركور الاحترافية</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #020617; user-select: none; touch-action: none; }
@@ -93,16 +93,16 @@
 <body>
 
     <div id="menu">
-        <h1>⚙️ تخصيص الشخصية واللعبة</h1>
+        <h1>⚡ تحدي الباركور الاحترافي</h1>
         <div class="form-group">
             <label>اسم اللاعب:</label>
-            <input type="text" id="player-name-input" value="البطل">
+            <input type="text" id="player-name-input" value="الباركور">
         </div>
         
         <div class="color-row">
             <div class="form-group">
                 <label>لون القميص:</label>
-                <input type="color" id="shirt-color-input" value="#2563eb">
+                <input type="color" id="shirt-color-input" value="#0284c7">
             </div>
             <div class="form-group">
                 <label>لون السروال:</label>
@@ -113,19 +113,19 @@
         <div class="color-row">
             <div class="form-group">
                 <label>لون الشعر:</label>
-                <input type="color" id="hair-color-input" value="#451a03">
+                <input type="color" id="hair-color-input" value="#f59e0b">
             </div>
             <div class="form-group">
                 <label>لون العيون:</label>
-                <input type="color" id="eye-color-input" value="#0284c7">
+                <input type="color" id="eye-color-input" value="#22c55e">
             </div>
         </div>
 
         <div class="form-group">
             <label>قصة الشعر:</label>
             <select id="hair-style-select">
+                <option value="spiky">شوكية (Spiky Parkour)</option>
                 <option value="short">قصير عادي</option>
-                <option value="spiky">شوكية (Spiky)</option>
                 <option value="cap">قبعة رياضية</option>
             </select>
         </div>
@@ -135,7 +135,7 @@
             <select id="level-select"></select>
         </div>
 
-        <button class="btn-main" onclick="startGame()">بدء اللعب 🚀</button>
+        <button class="btn-main" onclick="startGame()">انطلق للباركور 🚀</button>
     </div>
 
     <div id="hud">
@@ -155,8 +155,8 @@
     </div>
 
     <div id="win-modal">
-        <h2>🏆 دخلت البوابة بنجاح!</h2>
-        <p>مبروك إتمام المرحلة!</p>
+        <h2>🏆 أنجزت المسار بنجاح!</h2>
+        <p>مبروك إتمام تحدي الباركور الصعب!</p>
         <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
     </div>
 
@@ -175,9 +175,9 @@
         }
 
         let scene, camera, renderer;
-        let playerGroup, leftArm, rightArm, leftLeg, rightLeg, headMesh;
+        let playerGroup, leftArm, rightArm, leftLeg, rightLeg, headMesh, torsoMesh;
         let portalRingMesh = null;
-        let platforms = [], traps = [], coinsArr = [];
+        let platforms = [], traps = [], coinsArr = [], particlesArr = [];
         let key1Obj = null, roomDoorObj = null;
         
         let hasKey1 = false, deathCount = 0, coinsCount = savedCoins;
@@ -188,19 +188,40 @@
         let jumpsLeft = 2; const maxJumps = 2;
         let canDash = true, isDashing = false;
 
-        // متغيرات الأنيميشن والفيزياء الواقعية
+        let audioCtx = null;
         let animTime = 0;
-        const gravity = 0.013;
+        const gravity = 0.014;
         let velocity = { x: 0, y: 0, z: 0 };
         let targetVelocity = { x: 0, z: 0 };
-        let baseSpeed = 0.22;
-        let jumpForce = 0.36;
+        let baseSpeed = 0.24;
+        let jumpForce = 0.38;
         const keys = {};
+
+        // محرك المؤثرات الصوتية البرمجية دون الحاجة لملفات خارجية
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(freq, type, duration) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e){}
+        }
 
         function initScene() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020617);
-            scene.fog = new THREE.FogExp2(0x020617, 0.012);
+            scene.fog = new THREE.FogExp2(0x020617, 0.01);
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
             
@@ -211,16 +232,14 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
-            dirLight.position.set(20, 45, 20);
+            const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.3);
+            dirLight.position.set(20, 50, 20);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 1024;
             dirLight.shadow.mapSize.height = 1024;
-            dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 150;
             scene.add(dirLight);
 
             createStarfield();
@@ -230,6 +249,7 @@
             }
 
             window.addEventListener('keydown', e => {
+                initAudio();
                 const key = e.key.toLowerCase();
                 keys[key] = true;
                 if (e.code === 'ShiftLeft' || key === 'shift') triggerDash();
@@ -242,13 +262,13 @@
 
         function createStarfield() {
             const starGeo = new THREE.BufferGeometry();
-            const count = 350;
+            const count = 400;
             const posArray = new Float32Array(count * 3);
             for(let i=0; i<count*3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 220;
+                posArray[i] = (Math.random() - 0.5) * 250;
             }
             starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const starMat = new THREE.PointsMaterial({ size: 0.7, color: 0x38bdf8 });
+            const starMat = new THREE.PointsMaterial({ size: 0.8, color: 0x38bdf8 });
             const starMesh = new THREE.Points(starGeo, starMat);
             scene.add(starMesh);
         }
@@ -256,13 +276,15 @@
         function simulateJump() {
             if (isGrounded) {
                 velocity.y = jumpForce; isGrounded = false; jumpsLeft = maxJumps - 1;
+                playSound(320, 'square', 0.15);
+                spawnDustParticles(playerGroup.position.x, playerGroup.position.y - 0.7, playerGroup.position.z);
             } else if (jumpsLeft > 0) {
-                velocity.y = jumpForce * 0.88; jumpsLeft--;
+                velocity.y = jumpForce * 0.9; jumpsLeft--;
+                playSound(450, 'triangle', 0.2);
                 showToast("✨ قفزة مزدوجة!");
             }
         }
 
-        // تصميم مجسم مفصل مع محاور دوران جاهزة للأنيميشن
         function createCustomPlayer() {
             if (playerGroup) scene.remove(playerGroup);
             playerGroup = new THREE.Group();
@@ -273,19 +295,17 @@
             const eyeColor = document.getElementById('eye-color-input').value;
             const hairStyle = document.getElementById('hair-style-select').value;
 
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.5 });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.4 });
             const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.5 });
-            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
             headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
             headMesh.position.y = 1.5; headMesh.castShadow = true;
 
-            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), eyeMat);
-            eye1.position.set(-0.2, 1.55, -0.41);
-            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), eyeMat);
-            eye2.position.set(0.2, 1.55, -0.41);
+            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), eyeMat); eye1.position.set(-0.2, 1.55, -0.41);
+            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), eyeMat); eye2.position.set(0.2, 1.55, -0.41);
 
             let hairMesh;
             if (hairStyle === 'spiky') {
@@ -299,64 +319,78 @@
                 hairMesh.position.set(0, 1.95, 0);
             }
 
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat); 
-            torso.position.y = 0.6; torso.castShadow = true;
+            torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat); 
+            torsoMesh.position.y = 0.6; torsoMesh.castShadow = true;
 
-            // الأذرع مع تحسين محاور الدوران للأنيميشن
             leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
-            leftArm.geometry.translate(0, -0.35, 0);
-            leftArm.position.set(-0.62, 1.0, 0); leftArm.castShadow = true;
+            leftArm.geometry.translate(0, -0.35, 0); leftArm.position.set(-0.62, 1.0, 0); leftArm.castShadow = true;
 
             rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
-            rightArm.geometry.translate(0, -0.35, 0);
-            rightArm.position.set(0.62, 1.0, 0); rightArm.castShadow = true;
+            rightArm.geometry.translate(0, -0.35, 0); rightArm.position.set(0.62, 1.0, 0); rightArm.castShadow = true;
 
-            // الأرجل مع تحسين محاور الدوران
             leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
-            leftLeg.geometry.translate(0, -0.35, 0);
-            leftLeg.position.set(-0.22, 0.1, 0); leftLeg.castShadow = true;
+            leftLeg.geometry.translate(0, -0.35, 0); leftLeg.position.set(-0.22, 0.1, 0); leftLeg.castShadow = true;
 
             rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
-            rightLeg.geometry.translate(0, -0.35, 0);
-            rightLeg.position.set(0.22, 0.1, 0); rightLeg.castShadow = true;
+            rightLeg.geometry.translate(0, -0.35, 0); rightLeg.position.set(0.22, 0.1, 0); rightLeg.castShadow = true;
 
-            playerGroup.add(headMesh, eye1, eye2, hairMesh, torso, leftArm, rightArm, leftLeg, rightLeg);
+            playerGroup.add(headMesh, eye1, eye2, hairMesh, torsoMesh, leftArm, rightArm, leftLeg, rightLeg);
             scene.add(playerGroup);
         }
 
-        // تحديث محرك أنيميشن الحركة الانسيابية
         function updatePlayerAnimations() {
             if (!playerGroup || isDying) return;
 
             const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
             
             if (!isGrounded) {
-                // أنيميشن القفز والطيران
-                leftArm.rotation.x = -Math.PI * 0.8;
-                rightArm.rotation.x = -Math.PI * 0.8;
-                leftLeg.rotation.x = Math.PI * 0.2;
-                rightLeg.rotation.x = -Math.PI * 0.2;
+                // أنيميشن قفز الباركور الديناميكي
+                leftArm.rotation.x = -Math.PI * 0.85;
+                rightArm.rotation.x = -Math.PI * 0.85;
+                leftLeg.rotation.x = Math.PI * 0.25;
+                rightLeg.rotation.x = -Math.PI * 0.25;
+                torsoMesh.rotation.x = 0.15;
             } else if (speed > 0.03) {
-                // أنيميشن الجري/المشي التبادلي
-                animTime += speed * 2.5;
-                const armAngle = Math.sin(animTime) * 0.7;
-                const legAngle = Math.cos(animTime) * 0.7;
+                animTime += speed * 2.8;
+                const armAngle = Math.sin(animTime) * 0.8;
+                const legAngle = Math.cos(animTime) * 0.8;
 
                 leftArm.rotation.x = armAngle;
                 rightArm.rotation.x = -armAngle;
                 leftLeg.rotation.x = legAngle;
                 rightLeg.rotation.x = -legAngle;
 
-                // امالة خفيفة للرأس أثناء الركض
+                torsoMesh.rotation.x = 0.1; 
                 headMesh.position.y = 1.5 + Math.sin(animTime * 2) * 0.05;
             } else {
-                // أنيميشن الوقوف والخمول (Idle Breathing)
                 animTime += 0.03;
                 leftArm.rotation.x = Math.sin(animTime) * 0.05;
                 rightArm.rotation.x = -Math.sin(animTime) * 0.05;
-                leftLeg.rotation.x = 0;
-                rightLeg.rotation.x = 0;
+                leftLeg.rotation.x = 0; rightLeg.rotation.x = 0;
+                torsoMesh.rotation.x = 0;
                 headMesh.position.y = 1.5 + Math.sin(animTime) * 0.02;
+            }
+        }
+
+        function spawnDustParticles(x, y, z) {
+            for(let i=0; i<6; i++) {
+                const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshBasicMaterial({ color: 0x94a3b8 }));
+                p.position.set(x + (Math.random()-0.5)*0.5, y, z + (Math.random()-0.5)*0.5);
+                scene.add(p);
+                particlesArr.push({ mesh: p, life: 1.0, vy: Math.random()*0.02 });
+            }
+        }
+
+        function updateParticles() {
+            for(let i = particlesArr.length - 1; i >= 0; i--) {
+                let p = particlesArr[i];
+                p.mesh.position.y += p.vy;
+                p.life -= 0.05;
+                p.mesh.scale.multiplyScalar(0.92);
+                if(p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particlesArr.splice(i, 1);
+                }
             }
         }
 
@@ -365,8 +399,7 @@
 
             const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4, metalness: 0.1 });
             const mainMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mainMat);
-            mainMesh.receiveShadow = true;
-            mainMesh.castShadow = true;
+            mainMesh.receiveShadow = true; mainMesh.castShadow = true;
             group.add(mainMesh);
 
             const borderMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -383,6 +416,7 @@
             });
         }
 
+        // بناء خريطة باركور أصعب مع مسافات أبعد
         function buildHorizontalLevel(levelNum) {
             platforms.forEach(p => scene.remove(p.group));
             traps.forEach(t => scene.remove(t.mesh));
@@ -393,33 +427,35 @@
             platforms = []; traps = []; coinsArr = [];
             hasKey1 = false; updateHUDKeys();
 
-            const mapLength = 22 + Math.floor(levelNum * 1.3);
+            const mapLength = 25 + Math.floor(levelNum * 1.5);
             let currentZ = 0, currentY = 0, currentX = 0;
 
             createStylizedPlatform(0, 0, 0, 10, 1.2, 10, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
-                const gapZ = 4.2 + (levelNum * 0.04);
-                const stepY = (Math.sin(i * 0.4) * 0.6); 
-                const shiftX = (Math.cos(i * 0.5) * 3.2); 
+                // تكبير الفجوات والمسافات لإعطاء تحدي قفز باركور حقيقي
+                const gapZ = 6.0 + (levelNum * 0.08); 
+                const stepY = (Math.sin(i * 0.5) * 0.9); 
+                const shiftX = (Math.cos(i * 0.6) * 4.2); 
 
                 currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
-                const pWidth = Math.max(4.0, 7 - (levelNum * 0.08));
+                // تصغير المنصات مع زيادة الصعوبة
+                const pWidth = Math.max(3.2, 6.0 - (levelNum * 0.1));
                 let platColor = 0x334155;
                 let type = 'normal';
 
                 if (i % 4 === 0) { type = 'ice'; platColor = 0x0284c7; }
-                else if (i % 6 === 0) { type = 'jumppad'; platColor = 0x16a34a; }
+                else if (i % 5 === 0) { type = 'jumppad'; platColor = 0x16a34a; }
 
                 createStylizedPlatform(currentX, currentY, currentZ, pWidth, 1.2, pWidth, platColor, type);
 
                 if (i % 2 === 0) createCoin(currentX, currentY + 1.6, currentZ);
-                if (i % 5 === 2) createLaserTrap(currentX, currentY + 1.3, currentZ);
+                if (i % 4 === 1) createLaserTrap(currentX, currentY + 1.3, currentZ);
             }
 
             createKey1(currentX, currentY + 2, currentZ);
-            createEndRoomWithPortal(currentX, currentY, currentZ - 10);
+            createEndRoomWithPortal(currentX, currentY, currentZ - 12);
         }
 
         function createCoin(x, y, z) {
@@ -449,7 +485,6 @@
             roomDoorObj.position.set(x, y, z);
 
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
-            
             const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 12), new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.4 }));
             floor.position.set(0, 0, 0); floor.receiveShadow = true;
 
@@ -463,8 +498,7 @@
             portalRingMesh.position.set(0, 3.5, -4);
 
             const portalCenter = new THREE.Mesh(new THREE.CircleGeometry(1.9, 20), new THREE.MeshBasicMaterial({ color: 0x4ade80, side: THREE.DoubleSide }));
-            portalCenter.position.set(0, 3.5, -4);
-            portalCenter.name = "finish";
+            portalCenter.position.set(0, 3.5, -4); portalCenter.name = "finish";
 
             roomDoorObj.add(floor, backWall, leftWall, rightWall, portalRingMesh, portalCenter);
             scene.add(roomDoorObj);
@@ -473,15 +507,17 @@
         function triggerDash() {
             if (!canDash || isDashing || isDying) return;
             canDash = false; isDashing = true;
+            playSound(600, 'sawtooth', 0.1);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion);
-            velocity.x = forward.x * 0.52; velocity.z = forward.z * 0.52;
-            showToast("⚡ اندفاع!");
-            setTimeout(() => { isDashing = false; }, 200);
-            setTimeout(() => { canDash = true; }, 1200);
+            velocity.x = forward.x * 0.58; velocity.z = forward.z * 0.58;
+            showToast("⚡ اندفاع الباركور!");
+            setTimeout(() => { isDashing = false; }, 220);
+            setTimeout(() => { canDash = true; }, 1000);
         }
 
         function startGame() {
-            const name = document.getElementById('player-name-input').value || "البطل";
+            initAudio();
+            const name = document.getElementById('player-name-input').value || "الباركور";
             currentLevel = parseInt(document.getElementById('level-select').value);
 
             document.getElementById('hud-name').textContent = name;
@@ -500,6 +536,7 @@
         function triggerDeathAnimation() {
             if (isDying) return;
             isDying = true; deathCount++;
+            playSound(150, 'sawtooth', 0.3);
             document.getElementById('hud-deaths').textContent = deathCount;
             playerGroup.visible = false;
             
@@ -527,7 +564,8 @@
         }
 
         function openWinModal() {
-            confetti({ particleCount: 80, spread: 60 });
+            confetti({ particleCount: 100, spread: 70 });
+            playSound(580, 'sine', 0.4);
             localStorage.setItem('r4d_level', Math.min(30, currentLevel + 1));
             document.getElementById('win-modal').style.display = 'block';
         }
@@ -550,17 +588,19 @@
 
             if (portalRingMesh) portalRingMesh.rotation.z += 0.03;
 
-            // فيزياء واقعية وتنعيم التتباطؤ
+            updateParticles();
+
+            // تسارع وتسارع الباركور المتقدم
             targetVelocity.x = 0; targetVelocity.z = 0;
-            let moveSpeed = isOnIce ? baseSpeed * 1.25 : baseSpeed;
+            let moveSpeed = isOnIce ? baseSpeed * 1.3 : baseSpeed;
 
             if (keys['arrowleft'] || keys['a']) targetVelocity.x = -moveSpeed;
             if (keys['arrowright'] || keys['d']) targetVelocity.x = moveSpeed;
             if (keys['arrowup'] || keys['w']) targetVelocity.z = -moveSpeed;
             if (keys['arrowdown'] || keys['s']) targetVelocity.z = moveSpeed;
 
-            velocity.x += (targetVelocity.x - velocity.x) * (isOnIce ? 0.04 : 0.25);
-            velocity.z += (targetVelocity.z - velocity.z) * (isOnIce ? 0.04 : 0.25);
+            velocity.x += (targetVelocity.x - velocity.x) * (isOnIce ? 0.04 : 0.28);
+            velocity.z += (targetVelocity.z - velocity.z) * (isOnIce ? 0.04 : 0.28);
 
             if (Math.abs(velocity.x) > 0.02 || Math.abs(velocity.z) > 0.02) {
                 playerGroup.rotation.y = Math.atan2(-velocity.x, -velocity.z);
@@ -571,57 +611,63 @@
             playerGroup.position.y += velocity.y;
             playerGroup.position.z += velocity.z;
 
-            // تحديث أنيميشن الشخصية المتقدم
             updatePlayerAnimations();
 
-            // تصادم فيزيائي دقيق ومحكم
+            // تصادم فيزيائي متقن للباركور
             isGrounded = false; isOnIce = false;
-            
             const playerFeetY = playerGroup.position.y - 0.75;
             const playerX = playerGroup.position.x;
             const playerZ = playerGroup.position.z;
 
             for (let p of platforms) {
-                const halfW = p.size.w / 2 + 0.3;
-                const halfD = p.size.d / 2 + 0.3;
+                const halfW = p.size.w / 2 + 0.25;
+                const halfD = p.size.d / 2 + 0.25;
                 const topY = p.pos.y + p.size.h / 2;
 
                 if (playerX >= p.pos.x - halfW && playerX <= p.pos.x + halfW &&
                     playerZ >= p.pos.z - halfD && playerZ <= p.pos.z + halfD) {
                     
                     if (velocity.y <= 0 && playerFeetY <= topY && playerFeetY >= topY - 0.5) {
+                        if (!isGrounded) spawnDustParticles(playerX, topY, playerZ);
                         playerGroup.position.y = topY + 0.75;
                         velocity.y = 0;
                         isGrounded = true;
                         jumpsLeft = maxJumps;
 
                         if (p.type === 'ice') isOnIce = true;
-                        if (p.type === 'jumppad') { velocity.y = jumpForce * 1.65; showToast("🚀 قفزة فائقة!"); }
+                        if (p.type === 'jumppad') { 
+                            velocity.y = jumpForce * 1.7; 
+                            playSound(500, 'square', 0.2);
+                            showToast("🚀 قفزة قوية!"); 
+                        }
                     }
                 }
             }
 
-            // جمع المقتنيات والعناصر
+            // المقتنيات والتصادمات
             coinsArr.forEach(c => {
                 c.mesh.rotation.z += 0.05;
                 if (!c.collected && playerGroup.position.distanceTo(c.mesh.position) < 1.2) {
                     c.collected = true; scene.remove(c.mesh);
                     coinsCount += 10; document.getElementById('hud-coins').textContent = coinsCount;
+                    playSound(800, 'sine', 0.15);
                 }
             });
 
             traps.forEach(trap => {
-                if (playerGroup.position.distanceTo(trap.mesh.position) < 1.5) triggerDeathAnimation();
+                if (playerGroup.position.distanceTo(trap.mesh.position) < 1.4) triggerDeathAnimation();
             });
 
             if (key1Obj && !hasKey1) {
                 key1Obj.rotation.y += 0.04;
                 if (playerGroup.position.distanceTo(key1Obj.position) < 1.5) {
-                    hasKey1 = true; scene.remove(key1Obj); updateHUDKeys(); showToast("🔑 جمعت المفتاح!");
+                    hasKey1 = true; scene.remove(key1Obj); updateHUDKeys();
+                    playSound(700, 'triangle', 0.25);
+                    showToast("🔑 جمعت المفتاح!");
                 }
             }
 
-            if (playerGroup.position.y < -12) triggerDeathAnimation();
+            if (playerGroup.position.y < -14) triggerDeathAnimation();
 
             const finishObj = scene.getObjectByName("finish");
             if (finishObj) {
@@ -632,10 +678,10 @@
                 }
             }
 
-            // كاميرا متتبعة انسيابية
+            // كاميرا متتبعة ديناميكية
             camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
-            camera.position.y += (playerGroup.position.y + 4.0 - camera.position.y) * 0.1;
-            camera.position.z += (playerGroup.position.z + 9.5 - camera.position.z) * 0.1;
+            camera.position.y += (playerGroup.position.y + 4.2 - camera.position.y) * 0.1;
+            camera.position.z += (playerGroup.position.z + 10.0 - camera.position.z) * 0.1;
             camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z - 2);
 
             renderer.render(scene, camera);
