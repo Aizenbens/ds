@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - المتاهة المضيئة</title>
+    <title>Escape The Unknown - الباركور والوحش الذكي</title>
     
     <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -48,7 +48,41 @@
     <script>
         let scene, camera, renderer;
         let playerGroup, flashlight, ambientLight;
+        let monsterGroup = null;
         let isGameStarted = false;
+
+        // Player Stats & Physics
+        let stamina = 100, battery = 100;
+        let isFlashlightOn = true;
+        let isSprinting = false, isCrouching = false, isGrounded = false;
+        let velocity = { x: 0, y: 0, z: 0 };
+        const gravity = 0.015;
+        let yaw = 0, pitch = 0;
+        const keys = {};
+
+        // Audio System & Detection
+        let audioCtx = null;
+        let lastStepTime = 0, lastHeartbeat = 0;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(freq, type, duration, gainVal = 0.08) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e){}
+        }
 
         function showToast(text) {
             const msg = document.getElementById('toast-msg');
@@ -59,7 +93,7 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a10); // خلفية أوضح قليلاً
+            scene.background = new THREE.Color(0x0a0a10);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
@@ -68,73 +102,252 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // زيادة الإضاءة المحيطة لتسهيل رؤية الخريطة
             ambientLight = new THREE.AmbientLight(0xffffff, 0.45); 
             scene.add(ambientLight);
 
-            // المصباح اليدوي
             flashlight = new THREE.SpotLight(0xfffaed, 6, 50, Math.PI / 3, 0.4);
             scene.add(flashlight);
             scene.add(flashlight.target);
 
-            // إصلاح خطأ PointerLock المستمر
-            window.addEventListener('click', () => {
+            // Controls listeners & Pointer Lock Fix
+            window.addEventListener('mousedown', (e) => {
+                initAudio();
+                if (e.button === 0) keys['mousedown'] = true;
                 if (isGameStarted && document.pointerLockElement !== document.body) {
-                    try {
-                        document.body.requestPointerLock();
-                    } catch (err) {
-                        console.log("Pointer lock waiting...");
-                    }
+                    try { document.body.requestPointerLock(); } catch(e){}
                 }
             });
 
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) keys['mousedown'] = false;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === document.body) {
+                    yaw -= e.movementX * 0.0025;
+                    pitch -= e.movementY * 0.0025;
+                    pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+                }
+            });
+
+            window.addEventListener('keydown', e => {
+                initAudio();
+                const key = e.key.toLowerCase();
+                keys[key] = true;
+
+                if (key === 'c') isCrouching = !isCrouching; // Slide / Crouch
+                if (key === 'f') {
+                    isFlashlightOn = !isFlashlightOn;
+                    playSound(400, 'square', 0.05);
+                }
+                if (e.code === 'Space' && isGrounded) { // Jump logic
+                    velocity.y = 0.32;
+                    isGrounded = false;
+                    playSound(200, 'triangle', 0.1);
+                }
+            });
+
+            window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+            window.addEventListener('resize', onWindowResize);
+
             createCandlesAndMaze();
+            createSmartMonster();
         }
 
-        // إضافة الشموع والمتاهة المضيئة
         function createCandlesAndMaze() {
-            const floor = new THREE.Mesh(
-                new THREE.BoxGeometry(100, 1, 100),
-                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
-            );
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(100, 1, 100), floorMat);
             floor.position.set(0, -0.5, 0);
             scene.add(floor);
 
-            // مواضع الشموع المضيئة لإرشاد اللاعب
+            // جدران المتاهة الميسرة
+            const walls = [
+                { x: 0, z: -20, w: 40, h: 8, d: 2 },
+                { x: -15, z: 0, w: 2, h: 8, d: 30 },
+                { x: 15, z: 5, w: 2, h: 8, d: 25 },
+                { x: 5, z: 15, w: 20, h: 8, d: 2 }
+            ];
+
+            walls.forEach(w => {
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), wallMat);
+                wall.position.set(w.x, w.h / 2, w.z);
+                scene.add(wall);
+            });
+
+            // الشموع المضيئة
             const candlePositions = [
                 { x: 0, z: 15 }, { x: -10, z: 0 }, { x: 10, z: -10 }, { x: 0, z: -25 }
             ];
 
             candlePositions.forEach(pos => {
-                // شعلة شمعة
-                const candleLight = new THREE.PointLight(0xff7700, 3, 12);
-                candleLight.position.set(pos.x, 2, pos.z);
+                const candleLight = new THREE.PointLight(0xff7700, 3, 15);
+                candleLight.position.set(pos.x, 2.5, pos.z);
                 scene.add(candleLight);
 
-                // مجسم الشمعة المضيء
                 const candleMesh = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.1, 0.1, 0.6),
+                    new THREE.CylinderGeometry(0.12, 0.12, 0.6),
                     new THREE.MeshBasicMaterial({ color: 0xffaa00 })
                 );
-                candleMesh.position.set(pos.x, 1.8, pos.z);
+                candleMesh.position.set(pos.x, 2, pos.z);
                 scene.add(candleMesh);
             });
         }
 
+        function createSmartMonster() {
+            monsterGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.2 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.5, 1.0), bodyMat);
+            body.position.y = 1.75;
+
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.15), eyeMat);
+            eyeL.position.set(-0.3, 3.0, -0.5);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.15), eyeMat);
+            eyeR.position.set(0.3, 3.0, -0.5);
+
+            monsterGroup.add(body, eyeL, eyeR);
+            monsterGroup.position.set(0, 0, -35);
+            scene.add(monsterGroup);
+        }
+
+        function updateMonsterAI() {
+            if (!monsterGroup || !playerGroup) return;
+
+            const dist = monsterGroup.position.distanceTo(playerGroup.position);
+            const dangerOverlay = document.getElementById('danger-overlay');
+
+            // تأثير الرعب عند الاقتراب
+            if (dist < 18) {
+                dangerOverlay.style.opacity = (1 - dist / 18).toFixed(2);
+                if (performance.now() - lastHeartbeat > dist * 45) {
+                    playSound(65, 'sine', 0.15, 0.35);
+                    lastHeartbeat = performance.now();
+                }
+            } else {
+                dangerOverlay.style.opacity = 0;
+            }
+
+            // حركة الوحش واكتشاف الصوت (الجري يزيد سرعته)
+            let monsterSpeed = 0.07;
+            if (isSprinting) monsterSpeed = 0.15; // يسمع الجري ويطارد بلمح البصر!
+
+            const dir = new THREE.Vector3().subVectors(playerGroup.position, monsterGroup.position);
+            dir.y = 0;
+            dir.normalize();
+
+            monsterGroup.position.add(dir.multiplyScalar(monsterSpeed));
+
+            // الامساك باللاعب
+            if (dist < 1.8) {
+                showToast("💀 نالك الوحش!");
+                setTimeout(() => location.reload(), 1500);
+            }
+        }
+
         function startGame() {
+            initAudio();
             document.getElementById('menu').style.display = 'none';
             isGameStarted = true;
-            initScene();
             
+            initScene();
+
             playerGroup = new THREE.Group();
             playerGroup.position.set(0, 1.8, 25);
             scene.add(playerGroup);
 
-            try {
-                document.body.requestPointerLock();
-            } catch(e){}
+            try { document.body.requestPointerLock(); } catch(e){}
 
             showToast("⚠️ اتبع الشموع المضيئة للهروب!");
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const wantsToRun = keys['shift'] || keys['mousedown'];
+
+            // Stamina & Sprinting
+            if (wantsToRun && stamina > 0 && !isCrouching) {
+                isSprinting = true;
+                stamina = Math.max(0, stamina - 0.35);
+            } else {
+                isSprinting = false;
+                stamina = Math.min(100, stamina + 0.25);
+            }
+            document.getElementById('stamina-bar').style.width = stamina + '%';
+
+            // Flashlight & Battery
+            if (isFlashlightOn && battery > 0) {
+                battery = Math.max(0, battery - 0.02);
+                flashlight.intensity = (battery / 100) * 6;
+            } else {
+                flashlight.intensity = 0;
+            }
+            document.getElementById('battery-bar').style.width = battery + '%';
+
+            // Movement Logic
+            const moveSpeed = isCrouching ? 0.05 : (isSprinting ? 0.22 : 0.12);
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            forward.y = 0; right.y = 0;
+            forward.normalize(); right.normalize();
+
+            let move = new THREE.Vector3();
+            if (keys['w']) move.add(forward);
+            if (keys['s']) move.sub(forward);
+            if (keys['d']) move.add(right);
+            if (keys['a']) move.sub(right);
+
+            if (move.lengthSq() > 0) {
+                move.normalize().multiplyScalar(moveSpeed);
+                if (isGrounded && now - lastStepTime > (isSprinting ? 240 : 380)) {
+                    playSound(110, 'triangle', 0.05, 0.04);
+                    lastStepTime = now;
+                }
+            }
+
+            velocity.x += (move.x - velocity.x) * 0.3;
+            velocity.z += (move.z - velocity.z) * 0.3;
+            velocity.y -= gravity;
+
+            playerGroup.position.x += velocity.x;
+            playerGroup.position.z += velocity.z;
+            playerGroup.position.y += velocity.y;
+
+            if (playerGroup.position.y <= 1.8) {
+                playerGroup.position.y = 1.8;
+                velocity.y = 0;
+                isGrounded = true;
+            }
+
+            // Camera FOV Effects
+            camera.fov += ((isSprinting ? 88 : 75) - camera.fov) * 0.1;
+            camera.updateProjectionMatrix();
+
+            const eyeHeight = isCrouching ? 0.8 : 1.6;
+            camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight, playerGroup.position.z);
+
+            flashlight.position.copy(camera.position);
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            flashlight.target.position.copy(camera.position).add(dir);
+
+            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+            euler.x = pitch; euler.y = yaw;
+            camera.quaternion.setFromEuler(euler);
+
+            updateMonsterAI();
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
     </script>
 </body>
