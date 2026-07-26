@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - ذكاء الوحش والألغاز</title>
+    <title>Escape The Unknown - الفيزياء والألغاز والمؤقت</title>
     
     <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -15,8 +15,8 @@
     <div id="toast-msg"></div>
 
     <div id="menu">
-        <h1>👁️ البقاء على قيد الحياة - الوحش الذكي 👁️</h1>
-        <p>انتبه! الوحش الآن أكثر دهاءً، يمكنه إعداد كمائن لك والبحث في مكان خطواتك. استخدم الخزائن للاختباء بحذر!</p>
+        <h1>👁️ البقاء على قيد الحياة - التحدي والفيزياء 👁️</h1>
+        <p>قم بإصلاح المولد الكهربائي لفتح باب المخرج، واحذر من الوحش الذكي قبل انقضاء الوقت!</p>
         <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
@@ -30,12 +30,12 @@
             <div class="bar-container"><div id="battery-bar"></div></div>
         </div>
         <div class="hud-card">
-            <span>🏰 المستوى:</span>
-            <span id="hud-level" style="color: #38bdf8;">1 (الطابق الأرضي)</span>
+            <span>⏱️ الوقت:</span>
+            <span id="hud-timer" style="color: #facc15; font-weight: bold;">00:00</span>
         </div>
         <div class="hud-card">
             <span>🔑 الهدف:</span>
-            <span id="hud-status" style="color: #ef4444;">ابحث عن المفتاح 🔑</span>
+            <span id="hud-status" style="color: #ef4444;">أصلح المولد واجمع المفتاح 🔌🔑</span>
         </div>
     </div>
 
@@ -46,7 +46,7 @@
     </div>
 
     <div id="controls-hint">
-        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] اختباء / تفاعل
+        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] اختباء / تفاعل / إصلاح
     </div>
 
     <script>
@@ -54,31 +54,39 @@
         let playerGroup, flashlight, ambientLight;
         let monsterGroup = null;
         let exitDoor = null;
+        let generatorMesh = null;
         let isGameStarted = false;
 
-        // إحصائيات اللاعب
-        let currentLevel = 1;
+        // المؤقت
+        let startTime = 0;
+        let elapsedTime = 0;
+
+        // إحصائيات اللاعب والألغاز
         let stamina = 100, battery = 100;
         let isFlashlightOn = true;
         let isSprinting = false, isCrouching = false, isGrounded = false;
-        let isHiding = false; // حالة الاختباء في الخزانة
+        let isHiding = false;
         let hasKey = false;
+        let isGeneratorFixed = false; // لغز المولد
         
         let velocity = { x: 0, y: 0, z: 0 };
         const gravity = 0.015;
         let yaw = 0, pitch = 0;
         const keys = {};
 
-        // حالات الوحش الذكي (AI State Machine)
-        const MONSTER_STATES = { PATROL: 'patrol', CHASE: 'chase', INVESTIGATE: 'investigate', AMBUSH: 'ambush' };
+        // نظام الفيزياء والاصطدام (Collision Box)
+        const PLAYER_RADIUS = 0.8;
+        let wallBoundingBoxes = [];
+
+        // الوحش والدورية
+        const MONSTER_STATES = { PATROL: 'patrol', CHASE: 'chase' };
         let monsterState = MONSTER_STATES.PATROL;
-        let lastSoundLocation = null;
         let patrolWaypoints = [];
         let currentWaypointIndex = 0;
 
         let interactables = [];
         let mapObjects = [];
-        let lockers = []; // الخزائن للاختباء
+        let lockers = [];
 
         let audioCtx = null;
         let lastStepTime = 0, lastHeartbeat = 0;
@@ -169,26 +177,26 @@
             window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
             window.addEventListener('resize', onWindowResize);
 
-            buildLevel(currentLevel);
+            buildLevel();
         }
 
-        function buildLevel(level) {
+        function buildLevel() {
+            wallBoundingBoxes = [];
             mapObjects.forEach(obj => scene.remove(obj));
             interactables.forEach(item => scene.remove(item.mesh));
             lockers.forEach(l => scene.remove(l));
             mapObjects = []; interactables = []; lockers = [];
-            hasKey = false;
-            document.getElementById('slot-2').textContent = '❌';
 
-            const floorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x1e293b : 0x0f172a, roughness: 0.5 });
-            const wallMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x334155 : 0x1e1b4b, roughness: 0.7 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
 
             const floor = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 160), floorMat);
             floor.position.set(0, -0.5, 0);
             scene.add(floor);
             mapObjects.push(floor);
 
-            const walls = [
+            // الجدران مع ميزة حساب الاصطدامات (BoundingBox)
+            const wallsData = [
                 { x: 0, z: -80, w: 160, h: 10, d: 2 },
                 { x: 0, z: 80, w: 160, h: 10, d: 2 },
                 { x: -80, z: 0, w: 2, h: 10, d: 160 },
@@ -201,18 +209,27 @@
                 { x: 40, z: -30, w: 50, h: 10, d: 2 }
             ];
 
-            walls.forEach(w => {
+            wallsData.forEach(w => {
                 const wall = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), wallMat);
                 wall.position.set(w.x, w.h / 2, w.z);
                 scene.add(wall);
                 mapObjects.push(wall);
+
+                // إنشاء حدود التصادم الفيزيائي لكل جدار
+                const box = new THREE.Box3().setFromObject(wall);
+                wallBoundingBoxes.push(box);
             });
 
-            // إنشاء خزائن الاختباء
+            // إنشاء لغز المولد الكهربائي ⚙️
+            const genMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.5 });
+            generatorMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 3), genMat);
+            generatorMesh.position.set(-30, 1.75, 30);
+            scene.add(generatorMesh);
+            mapObjects.push(generatorMesh);
+
             createLocker(-10, 0, 10);
             createLocker(20, 0, -40);
 
-            // نقاط دورية الوحش (Patrol Waypoints)
             patrolWaypoints = [
                 new THREE.Vector3(-40, 0, -40),
                 new THREE.Vector3(40, 0, -40),
@@ -220,23 +237,31 @@
                 new THREE.Vector3(-40, 0, 40)
             ];
 
-            if (level === 1) {
-                createItem(-60, 1, -60, 'key', 0xfacc15);
-                createItem(20, 1, 30, 'battery', 0x38bdf8);
-                document.getElementById('hud-level').textContent = "1 (الطابق الأرضي)";
-            } else {
-                createItem(60, 1, -60, 'key', 0xfacc15);
-                createItem(-30, 1, 40, 'battery', 0x38bdf8);
-                document.getElementById('hud-level').textContent = "2 (السرداب السفلي 💀)";
-            }
+            createItem(-60, 1, -60, 'key', 0xfacc15);
+            createItem(20, 1, 30, 'battery', 0x38bdf8);
 
-            const doorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x2563eb : 0xb91c1c, roughness: 0.3 });
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.3 });
             if (exitDoor) scene.remove(exitDoor);
             exitDoor = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 0.5), doorMat);
             exitDoor.position.set(0, 4, -79);
             scene.add(exitDoor);
 
-            createSmartMonster(level);
+            createSmartMonster();
+        }
+
+        // معالجة الاصطدامات الفيزيائية ومستويات التداخل لمنع اختراق الجدران
+        function checkWallCollisions(newPos) {
+            const playerBox = new THREE.Box3(
+                new THREE.Vector3(newPos.x - PLAYER_RADIUS, newPos.y - 1.6, newPos.z - PLAYER_RADIUS),
+                new THREE.Vector3(newPos.x + PLAYER_RADIUS, newPos.y + 0.5, newPos.z + PLAYER_RADIUS)
+            );
+
+            for (let i = 0; i < wallBoundingBoxes.length; i++) {
+                if (playerBox.intersectsBox(wallBoundingBoxes[i])) {
+                    return true; // هناك اصطدام بالجدار
+                }
+            }
+            return false;
         }
 
         function createLocker(x, y, z) {
@@ -260,17 +285,23 @@
         function handleInteraction() {
             if (!playerGroup) return;
 
-            // منطق الدخول والخروج من الخزانة للاختباء
+            // حل لغز المولد الكهربائي
+            if (generatorMesh && playerGroup.position.distanceTo(generatorMesh.position) < 4.0) {
+                if (!isGeneratorFixed) {
+                    isGeneratorFixed = true;
+                    generatorMesh.material.color.setHex(0x22c55e); // تغيير اللون إلى الأخضر
+                    showToast("⚙️ تم إصلاح المولد وتوصيل الكهرباء للبوابة!");
+                    playSound(500, 'square', 0.3);
+                } else {
+                    showToast("⚡ المولد يعمل بالفعل!");
+                }
+            }
+
             lockers.forEach(locker => {
                 if (playerGroup.position.distanceTo(locker.position) < 3.5) {
                     isHiding = !isHiding;
-                    if (isHiding) {
-                        showToast("🚪 أنت مختبئ الآن داخل الخزانة! (اضغط E للخروج)");
-                        playSound(300, 'square', 0.1);
-                    } else {
-                        showToast("🚪 خرجت من الخزانة!");
-                        playSound(350, 'square', 0.1);
-                    }
+                    showToast(isHiding ? "🚪 أنت مختبئ الآن داخل الخزانة!" : "🚪 خرجت من الخزانة!");
+                    playSound(300, 'square', 0.1);
                 }
             });
 
@@ -285,9 +316,7 @@
                     } else if (item.type === 'key') {
                         hasKey = true;
                         document.getElementById('slot-2').textContent = '🔑';
-                        document.getElementById('hud-status').textContent = currentLevel === 1 ? "توجه إلى الباب للانتقال للمستوى 2! 🚪" : "اخرج الآن! 🚪";
-                        document.getElementById('hud-status').style.color = "#22c55e";
-                        showToast("🔑 حصلت على المفتاح!");
+                        showToast("🔑 حصلت على المفتاح الذهبي!");
                     }
                     scene.remove(item.mesh);
                     interactables.splice(index, 1);
@@ -295,30 +324,28 @@
                 }
             });
 
+            // فتح الباب للهروب
             if (exitDoor && playerGroup.position.distanceTo(exitDoor.position) < 4.0) {
-                if (hasKey) {
-                    if (currentLevel === 1) {
-                        currentLevel = 2;
-                        showToast("⚡ انتقلت إلى المستوى الثاني (السرداب السفلي)!");
-                        playerGroup.position.set(0, 1.8, 65);
-                        buildLevel(2);
-                    } else {
-                        showToast("🎉 مبروك! لقد هربت من المتاهة بالكامل وتجاوزت جميع المستويات!");
-                        playSound(800, 'sine', 0.5);
-                        setTimeout(() => location.reload(), 3000);
-                    }
+                if (hasKey && isGeneratorFixed) {
+                    const finalTime = document.getElementById('hud-timer').textContent;
+                    showToast(`🎉 مبروك! نجحت في الهروب خلال: ${finalTime}`);
+                    playSound(800, 'sine', 0.5);
+                    setTimeout(() => location.reload(), 4000);
+                } else if (!isGeneratorFixed) {
+                    showToast("🔒 الباب يتطلب تشغيل المولد الكهربائي أولاً! ⚙️");
+                    playSound(150, 'sawtooth', 0.2);
                 } else {
-                    showToast("🔒 الباب مغلق! ابحث عن المفتاح المخفي أولاً!");
+                    showToast("🔒 الباب مغلق! تحتاج المفتاح الذهبي! 🔑");
                     playSound(150, 'sawtooth', 0.2);
                 }
             }
         }
 
-        function createSmartMonster(level) {
+        function createSmartMonster() {
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x050505 : 0x450a0a, roughness: 0.2 });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: level === 1 ? 0xff0000 : 0xfacc15 });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.2 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
             const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.0, 1.2), bodyMat);
             body.position.y = 2.0;
@@ -349,28 +376,22 @@
                 dangerOverlay.style.opacity = 0;
             }
 
-            // منطق ذكاء الاصطناعي (AI State Machine)
-            if (isSprinting && !isHiding) {
-                monsterState = MONSTER_STATES.CHASE; // يسمع الركض ويطارد
-            } else if (dist < 15 && isFlashlightOn && !isHiding) {
-                monsterState = MONSTER_STATES.CHASE; // يرى ضوء المصباح
-            } else if (monsterState === MONSTER_STATES.CHASE && (isHiding || dist > 35)) {
-                monsterState = MONSTER_STATES.PATROL; // يفقد الأثر
-            }
+            if (isSprinting && !isHiding) monsterState = MONSTER_STATES.CHASE;
+            else if (dist < 15 && isFlashlightOn && !isHiding) monsterState = MONSTER_STATES.CHASE;
+            else if (monsterState === MONSTER_STATES.CHASE && (isHiding || dist > 35)) monsterState = MONSTER_STATES.PATROL;
 
             let targetPos = new THREE.Vector3();
 
             if (monsterState === MONSTER_STATES.CHASE && !isHiding) {
                 targetPos.copy(playerGroup.position);
             } else {
-                // وضع الدورية (Patrol)
                 targetPos.copy(patrolWaypoints[currentWaypointIndex]);
                 if (monsterGroup.position.distanceTo(targetPos) < 3.0) {
                     currentWaypointIndex = (currentWaypointIndex + 1) % patrolWaypoints.length;
                 }
             }
 
-            let monsterSpeed = currentLevel === 1 ? 0.08 : 0.12;
+            let monsterSpeed = 0.09;
             if (monsterState === MONSTER_STATES.CHASE) monsterSpeed += 0.06;
 
             const dir = new THREE.Vector3().subVectors(targetPos, monsterGroup.position);
@@ -379,17 +400,25 @@
 
             monsterGroup.position.add(dir.multiplyScalar(monsterSpeed));
 
-            // الإمساك باللاعب إذا لم يكن مختبئاً
             if (dist < 2.0 && !isHiding) {
-                showToast("💀 نالك الوحش الذكي!");
+                showToast("💀 نالك الوحش!");
                 setTimeout(() => location.reload(), 1500);
             }
+        }
+
+        function updateTimer() {
+            if (!isGameStarted) return;
+            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+            const seconds = (elapsedTime % 60).toString().padStart(2, '0');
+            document.getElementById('hud-timer').textContent = `${minutes}:${seconds}`;
         }
 
         function startGame() {
             initAudio();
             document.getElementById('menu').style.display = 'none';
             isGameStarted = true;
+            startTime = Date.now();
             
             initScene();
 
@@ -399,13 +428,14 @@
 
             try { document.body.requestPointerLock(); } catch(e){}
 
-            showToast("⚠️ اختبئ في الخزائن [E] لتفادي الوحش!");
+            showToast("⚠️ أصلح المولد الأحمر واجمع المفتاح للهروب!");
             animate();
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
+            updateTimer();
             const now = performance.now();
             const wantsToRun = keys['shift'] || keys['mousedown'];
 
@@ -442,8 +472,17 @@
                 velocity.z += (move.z - velocity.z) * 0.3;
                 velocity.y -= gravity;
 
-                playerGroup.position.x += velocity.x;
-                playerGroup.position.z += velocity.z;
+                // التثبت الفيزيائي قبل تطبيق أبعاد الموقع الجغرافي لمنع الاختراق
+                const nextPosX = playerGroup.position.x + velocity.x;
+                const nextPosZ = playerGroup.position.z + velocity.z;
+
+                if (!checkWallCollisions(new THREE.Vector3(nextPosX, playerGroup.position.y, playerGroup.position.z))) {
+                    playerGroup.position.x = nextPosX;
+                }
+                if (!checkWallCollisions(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y, nextPosZ))) {
+                    playerGroup.position.z = nextPosZ;
+                }
+
                 playerGroup.position.y += velocity.y;
 
                 if (playerGroup.position.y <= 1.8) {
