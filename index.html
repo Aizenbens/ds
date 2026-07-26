@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>الهروب من المغارة - الباركور والمطاردة</title>
+    <title>From What?</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #020208; user-select: none; touch-action: none; }
@@ -15,17 +15,24 @@
             border-radius: 24px; color: #f8fafc; text-align: center;
             box-shadow: 0 0 40px rgba(220, 38, 38, 0.5);
             border: 2px solid rgba(220, 38, 38, 0.6);
-            z-index: 10; width: 92%; max-width: 440px; max-height: 95vh; overflow-y: auto;
-            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 12px;
+            z-index: 10; width: 92%; max-width: 460px; max-height: 95vh; overflow-y: auto;
+            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 10px;
         }
 
-        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 12px #991b1b; font-size: 22px; font-weight: 800; }
+        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 12px #991b1b; font-size: 26px; font-weight: 900; }
         
         .preview-container {
-            width: 100%; height: 180px; background: #05070f; border-radius: 16px;
+            width: 100%; height: 160px; background: #05070f; border-radius: 16px;
             border: 1px solid #1e293b; position: relative; overflow: hidden;
             box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
         }
+
+        .tabs { display: flex; gap: 8px; justify-content: center; }
+        .tab-btn {
+            flex: 1; padding: 8px; background: #1e293b; color: #94a3b8;
+            border: 1px solid #334155; border-radius: 10px; cursor: pointer; font-weight: bold;
+        }
+        .tab-btn.active { background: #ef4444; color: white; border-color: #f87171; }
 
         .form-group { text-align: right; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #94a3b8; font-size: 12px; }
@@ -37,13 +44,22 @@
         .color-row { display: flex; gap: 8px; }
         .color-row div { flex: 1; }
 
+        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 5px; }
+        .shop-card {
+            background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px;
+        }
+        .shop-card button {
+            background: #22c55e; border: none; color: white; padding: 4px 8px; border-radius: 6px;
+            cursor: pointer; font-weight: bold; font-size: 10px; width: 100%;
+        }
+
         button.btn-main {
             background: linear-gradient(135deg, #ef4444, #991b1b);
             color: white; border: none; padding: 12px; border-radius: 12px;
             font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%;
             box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
         }
-        button.btn-main:hover { transform: scale(1.02); background: linear-gradient(135deg, #f87171, #dc2626); }
 
         #hud {
             position: absolute; top: 12px; right: 12px; left: 12px;
@@ -68,16 +84,6 @@
             font-size: 13px; font-weight: bold; cursor: pointer; backdrop-filter: blur(8px);
         }
 
-        #touch-controls {
-            display: none; position: absolute; bottom: 20px; right: 20px; z-index: 6;
-            gap: 12px; flex-direction: column;
-        }
-        .touch-btn {
-            width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.5);
-            border: 2px solid #ef4444; color: white; font-size: 22px; font-weight: bold;
-            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px);
-        }
-
         #win-modal {
             display: none; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -85,6 +91,12 @@
             border-radius: 20px; color: white; text-align: center;
             border: 2px solid #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
             z-index: 20; width: 85%; max-width: 340px;
+        }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+            border: 2px solid rgba(255,255,255,0.6); border-radius: 50%;
         }
 
         #toast-msg {
@@ -100,87 +112,104 @@
 </head>
 <body>
 
+    <div id="crosshair"></div>
+
     <div id="menu">
-        <h1>🌋 الهروب من مغارة الموت</h1>
+        <h1>🔥 From What? 🔥</h1>
         
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('custom')">التخصيص</button>
+            <button class="tab-btn" onclick="switchTab('shop')">المتجر 🛒</button>
+        </div>
+
         <div class="preview-container" id="shop-preview"></div>
 
-        <div class="color-row">
-            <div class="form-group">
-                <label>القميص:</label>
-                <input type="color" id="shirt-color-input" value="#ef4444" onchange="updateShopPreview()">
+        <div id="tab-custom">
+            <div class="color-row">
+                <div class="form-group">
+                    <label>القميص:</label>
+                    <input type="color" id="shirt-color-input" value="#ef4444" onchange="updateShopPreview()">
+                </div>
+                <div class="form-group">
+                    <label>السروال:</label>
+                    <input type="color" id="pants-color-input" value="#0f172a" onchange="updateShopPreview()">
+                </div>
+                <div class="form-group">
+                    <label>الشعر:</label>
+                    <input type="color" id="hair-color-input" value="#f59e0b" onchange="updateShopPreview()">
+                </div>
             </div>
-            <div class="form-group">
-                <label>السروال:</label>
-                <input type="color" id="pants-color-input" value="#0f172a" onchange="updateShopPreview()">
-            </div>
-            <div class="form-group">
-                <label>الشعر:</label>
-                <input type="color" id="hair-color-input" value="#f59e0b" onchange="updateShopPreview()">
+
+            <div class="color-row">
+                <div class="form-group">
+                    <label>المستوى (1 - 40):</label>
+                    <select id="level-select"></select>
+                </div>
             </div>
         </div>
 
-        <div class="color-row">
-            <div class="form-group">
-                <label>قصة الشعر:</label>
-                <select id="hair-style-select" onchange="updateShopPreview()">
-                    <option value="spiky">شوكية (Spiky)</option>
-                    <option value="short">قصير</option>
-                    <option value="cap">قبعة رياضية</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>المستوى (1 - 30):</label>
-                <select id="level-select"></select>
+        <div id="tab-shop" style="display: none;">
+            <div class="shop-grid">
+                <div class="shop-card">
+                    <span>🔥 سكن الحمم</span>
+                    <span>100 عملة</span>
+                    <button onclick="buySkin('lava', 100)">شراء / تجهيز</button>
+                </div>
+                <div class="shop-card">
+                    <span>⚡ سكن البرق</span>
+                    <span>250 عملة</span>
+                    <button onclick="buySkin('lightning', 250)">شراء / تجهيز</button>
+                </div>
+                <div class="shop-card">
+                    <span>🗿 سكن الصخر</span>
+                    <span>400 عملة</span>
+                    <button onclick="buySkin('rock', 400)">شراء / تجهيز</button>
+                </div>
             </div>
         </div>
 
-        <button class="btn-main" onclick="startGame()">ابدأ الهروب الآن 🏃‍♂️🔥</button>
+        <button class="btn-main" onclick="startGame()">ابدأ اللعب الآن 🏃‍♂️</button>
     </div>
 
     <div id="hud">
         <div class="hud-card">💰 <span id="hud-coins" style="color: #facc15;">0</span></div>
         <div class="hud-card">🔑 <span id="hud-key1" style="color: #ef4444;">❌</span></div>
         <div class="hud-card">💀 <span id="hud-deaths" style="color: #ef4444;">0</span></div>
-        <div class="hud-card">🚩 نقطة حفظ: <span id="hud-cp" style="color: #38bdf8;">بداية</span></div>
-        <div class="hud-card">📍 مرحلة: <span id="hud-level" style="color: #facc15;">1</span> / 30</div>
+        <div class="hud-card">📍 مرحلة: <span id="hud-level" style="color: #facc15;">1</span> / 40</div>
     </div>
 
     <div id="action-btn-container">
         <button class="action-btn" onclick="triggerDash()">⚡ اندفاع (Shift)</button>
     </div>
 
-    <div id="touch-controls">
-        <div class="touch-btn" onclick="simulateJump()">⬆️</div>
-    </div>
-
     <div id="win-modal">
-        <h2>🏆 هربت من المغارة بنجاح!</h2>
-        <p>نجوت من الوحش وعبرت الفخاخ!</p>
+        <h2>🏆 هربت بنجاح!</h2>
+        <p>اجتزت العقبات والوحش المطارد!</p>
         <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
     </div>
 
     <div id="toast-msg"></div>
 
     <script>
-        let savedLevel = parseInt(localStorage.getItem('r4d_level')) || 1;
-        let savedCoins = parseInt(localStorage.getItem('r4d_coins')) || 0;
+        let savedLevel = parseInt(localStorage.getItem('fw_level')) || 1;
+        let savedCoins = parseInt(localStorage.getItem('fw_coins')) || 0;
+        let ownedSkins = JSON.parse(localStorage.getItem('fw_skins')) || ['default'];
+        let equippedSkin = localStorage.getItem('fw_equipped_skin') || 'default';
 
         const levelSelect = document.getElementById('level-select');
-        for (let i = 1; i <= 30; i++) {
+        for (let i = 1; i <= 40; i++) {
             const opt = document.createElement('option');
-            opt.value = i; opt.textContent = `المستوى ${i}`;
+            opt.value = i; opt.textContent = i <= 30 ? `باركور ${i}` : `متاهة ${i - 30}`;
             if (i === savedLevel) opt.selected = true;
             levelSelect.appendChild(opt);
         }
 
         let scene, camera, renderer;
         let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
-        let playerGroup, leftArm, rightArm, leftLeg, rightLeg, headMesh, torsoMesh;
-        let monsterGroup = null, monsterLeftArm, monsterRightArm;
-        let portalRingMesh = null;
-        let platforms = [], traps = [], coinsArr = [], particlesArr = [], checkpoints = [];
-        let key1Obj = null, roomDoorObj = null;
+        let playerGroup;
+        let monsterGroup = null;
+        let platforms = [], coinsArr = [], checkpoints = [];
+        let key1Obj = null, roomDoorObj = null, endPlatformMesh = null;
         
         let lastCheckpointPos = { x: 0, y: 3, z: 0 };
         let hasKey1 = false, deathCount = 0, coinsCount = savedCoins;
@@ -189,20 +218,21 @@
         let currentLevel = savedLevel;
         let isGrounded = false;
         let jumpsLeft = 2; const maxJumps = 2;
-        let canDash = true, isDashing = false;
+        let canDash = true;
 
         let audioCtx = null;
         let animTime = 0;
-        const gravity = 0.015;
+        const gravity = 0.016;
         let velocity = { x: 0, y: 0, z: 0 };
         let targetVelocity = { x: 0, z: 0 };
-        let baseSpeed = 0.25;
+        let baseSpeed = 0.22;
         let jumpForce = 0.38;
-        let monsterSpeed = 0.15;
+        let monsterSpeed = 0.16;
         const keys = {};
 
-        // أبعاد اللاعب الفيزيائية للتصادم (Box Collider)
-        const playerSize = { w: 0.8, h: 1.8, d: 0.6 };
+        // زوايا التحكم بالرؤية بمنظور الشخص الأول
+        let pitch = 0, yaw = 0;
+        const playerSize = { w: 0.8, h: 1.8, d: 0.8 };
 
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -224,14 +254,44 @@
             } catch(e){}
         }
 
-        // إعداد متجر التخصيص التفاعلي
+        function switchTab(tab) {
+            document.getElementById('tab-custom').style.display = tab === 'custom' ? 'block' : 'none';
+            document.getElementById('tab-shop').style.display = tab === 'shop' ? 'block' : 'none';
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function buySkin(skinName, cost) {
+            if (ownedSkins.includes(skinName)) {
+                equippedSkin = skinName;
+                localStorage.setItem('fw_equipped_skin', equippedSkin);
+                showToast("تم تجهيز السكن!");
+                updateShopPreview();
+                return;
+            }
+
+            if (coinsCount >= cost) {
+                coinsCount -= cost;
+                ownedSkins.push(skinName);
+                equippedSkin = skinName;
+                localStorage.setItem('fw_coins', coinsCount);
+                localStorage.setItem('fw_skins', JSON.stringify(ownedSkins));
+                localStorage.setItem('fw_equipped_skin', equippedSkin);
+                document.getElementById('hud-coins').textContent = coinsCount;
+                showToast("مبروك! تم شراء السكن 🎉");
+                updateShopPreview();
+            } else {
+                showToast("العملات غير كافية!");
+            }
+        }
+
         function initShopPreview() {
             const container = document.getElementById('shop-preview');
             previewScene = new THREE.Scene();
             previewScene.background = new THREE.Color(0x05070f);
 
             previewCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-            previewCamera.position.set(0, 1.2, 3.5);
+            previewCamera.position.set(0, 1.2, 3.2);
 
             previewRenderer = new THREE.WebGLRenderer({ antialias: true });
             previewRenderer.setSize(container.clientWidth, container.clientHeight);
@@ -246,68 +306,24 @@
             animateShopPreview();
         }
 
-        function buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle) {
+        function buildPlayerMesh() {
             const group = new THREE.Group();
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.4 });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.5 });
-            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+            let skinColor = 0xffdbac, shirtColor = document.getElementById('shirt-color-input').value;
 
-            // الرأس والعيون
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat); 
-            head.position.y = 1.45;
-            
-            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.05), eyeMat);
-            eye1.position.set(-0.18, 1.5, -0.36);
-            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.05), eyeMat);
-            eye2.position.set(0.18, 1.5, -0.36);
+            if (equippedSkin === 'lava') { skinColor = 0xef4444; shirtColor = 0x7f1d1d; }
+            else if (equippedSkin === 'lightning') { skinColor = 0x38bdf8; shirtColor = 0x0284c7; }
+            else if (equippedSkin === 'rock') { skinColor = 0x475569; shirtColor = 0x1e293b; }
 
-            // الشعر والقبعة
-            let hairMesh;
-            if (hairStyle === 'spiky') {
-                hairMesh = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.4, 5), hairMat);
-                hairMesh.position.set(0, 1.95, 0);
-            } else if (hairStyle === 'cap') {
-                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.9), hairMat);
-                hairMesh.position.set(0, 1.82, -0.05);
-            } else {
-                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.2, 0.75), hairMat);
-                hairMesh.position.set(0, 1.82, 0);
-            }
-
-            // الجذع
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.45), shirtMat); 
-            torso.position.y = 0.65;
-
-            // الأذرع
-            const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.85, 0.28), skinMat); 
-            lArm.geometry.translate(0, -0.35, 0); lArm.position.set(-0.56, 1.05, 0);
-
-            const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.85, 0.28), skinMat); 
-            rArm.geometry.translate(0, -0.35, 0); rArm.position.set(0.56, 1.05, 0);
-
-            // الأرجل
-            const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.34), pantsMat); 
-            lLeg.geometry.translate(0, -0.35, 0); lLeg.position.set(-0.2, 0.2, 0);
-
-            const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.34), pantsMat); 
-            rLeg.geometry.translate(0, -0.35, 0); rLeg.position.set(0.2, 0.2, 0);
-
-            group.add(head, eye1, eye2, hairMesh, torso, lArm, rArm, lLeg, rLeg);
-            return { group, head, torso, lArm, rArm, lLeg, rLeg };
+            const mat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.5 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.5), mat);
+            body.position.y = 0.9;
+            group.add(body);
+            return group;
         }
 
         function updateShopPreview() {
             if (previewPlayerGroup) previewScene.remove(previewPlayerGroup);
-
-            const shirtColor = document.getElementById('shirt-color-input').value;
-            const pantsColor = document.getElementById('pants-color-input').value;
-            const hairColor = document.getElementById('hair-color-input').value;
-            const hairStyle = document.getElementById('hair-style-select').value;
-
-            const res = buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle);
-            previewPlayerGroup = res.group;
+            previewPlayerGroup = buildPlayerMesh();
             previewScene.add(previewPlayerGroup);
         }
 
@@ -320,29 +336,32 @@
         function initScene() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020208);
-            scene.fog = new THREE.FogExp2(0x020208, 0.018);
+            scene.fog = new THREE.FogExp2(0x020208, 0.025);
 
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
             
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xff4444, 0.5);
+            const ambientLight = new THREE.AmbientLight(0xff5555, 0.6);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xf87171, 1.2);
-            dirLight.position.set(20, 50, 20);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
+            // تحكم بالماوس لنظام الشخص الأول (First Person Controls)
+            document.body.addEventListener('click', () => {
+                if (document.pointerLockElement !== document.body) {
+                    document.body.requestPointerLock();
+                }
+            });
 
-            createCaveEnvironment();
-
-            if ('ontouchstart' in window) {
-                document.getElementById('touch-controls').style.display = 'flex';
-            }
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement === document.body) {
+                    yaw -= e.movementX * 0.0025;
+                    pitch -= e.movementY * 0.0025;
+                    pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+                }
+            });
 
             window.addEventListener('keydown', e => {
                 initAudio();
@@ -356,199 +375,126 @@
             window.addEventListener('resize', onWindowResize);
         }
 
-        function createCaveEnvironment() {
-            // إضافة صواعد ونوازل صخرية ثقيلة
-            for(let i=0; i<80; i++) {
-                const geo = new THREE.ConeGeometry(1.8, 10 + Math.random()*10, 6);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set((Math.random()-0.5)*90, 22, -i*7);
-                mesh.rotation.x = Math.PI;
-                scene.add(mesh);
-            }
-        }
-
         function simulateJump() {
             if (isGrounded) {
                 velocity.y = jumpForce; isGrounded = false; jumpsLeft = maxJumps - 1;
                 playSound(320, 'square', 0.15);
             } else if (jumpsLeft > 0) {
-                velocity.y = jumpForce * 0.9; jumpsLeft--;
+                velocity.y = jumpForce * 0.85; jumpsLeft--;
                 playSound(450, 'triangle', 0.2);
-                showToast("✨ قفزة مزدوجة!");
             }
         }
 
-        function createCustomPlayer() {
-            if (playerGroup) scene.remove(playerGroup);
-
-            const shirtColor = document.getElementById('shirt-color-input').value;
-            const pantsColor = document.getElementById('pants-color-input').value;
-            const hairColor = document.getElementById('hair-color-input').value;
-            const hairStyle = document.getElementById('hair-style-select').value;
-
-            const res = buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle);
-            playerGroup = res.group;
-            leftArm = res.lArm; rightArm = res.rArm;
-            leftLeg = res.lLeg; rightLeg = res.rLeg;
-            headMesh = res.head; torsoMesh = res.torso;
-
-            scene.add(playerGroup);
-        }
-
-        // إنشاء وحش مغارة مرعب ومفصل
         function createChasingMonster() {
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
 
-            const mat = new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.3, emissive: 0x280000 });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const mat = new THREE.MeshStandardMaterial({ color: 0x280000, roughness: 0.2 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.6, 1.8), mat); body.position.y = 1.8;
+            const eye = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 0.2), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+            eye.position.set(0, 3.0, -0.9);
 
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.8, 1.8), mat); body.position.y = 1.9;
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 1.4), mat); head.position.y = 4.2;
-
-            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.1), eyeMat); eye1.position.set(-0.45, 4.3, -0.72);
-            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.1), eyeMat); eye2.position.set(0.45, 4.3, -0.72);
-
-            monsterLeftArm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), mat);
-            monsterLeftArm.geometry.translate(0, -1.2, 0); monsterLeftArm.position.set(-1.5, 3.5, 0);
-
-            monsterRightArm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), mat);
-            monsterRightArm.geometry.translate(0, -1.2, 0); monsterRightArm.position.set(1.5, 3.5, 0);
-
-            monsterGroup.add(body, head, eye1, eye2, monsterLeftArm, monsterRightArm);
-            monsterGroup.position.set(0, 0, 12);
+            monsterGroup.add(body, eye);
+            monsterGroup.position.set(0, 0, 10);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.15 + (currentLevel * 0.004);
-        }
-
-        function createCheckpoint(x, y, z) {
-            const group = new THREE.Group();
-            group.position.set(x, y, z);
-
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-            pole.position.y = 1.6;
-
-            const flag = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            flag.position.set(0.5, 2.8, 0); flag.name = "flagMesh";
-
-            group.add(pole, flag); scene.add(group);
-            checkpoints.push({ group, pos: { x, y: y + 1.2, z }, active: false });
+            monsterSpeed = 0.15 + (currentLevel * 0.003);
         }
 
         function createStylizedPlatform(x, y, z, w, h, d, colorHex, type = 'normal') {
             const group = new THREE.Group();
-
             const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
             const mainMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mainMat);
-            mainMesh.receiveShadow = true; mainMesh.castShadow = true;
             group.add(mainMesh);
-
-            const borderMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-            const topBorder = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.12, d + 0.1), borderMat);
-            topBorder.position.y = h / 2 + 0.06;
-            group.add(topBorder);
 
             group.position.set(x, y, z);
             scene.add(group);
 
             platforms.push({ 
                 mesh: mainMesh, group: group, type: type, 
-                size: { w, h, d }, pos: { x, y, z },
-                timeOffset: Math.random() * 5
+                size: { w, h, d }, pos: { x, y, z }
             });
+            return group;
+        }
+
+        function buildMazeLevel(levelNum) {
+            // تصميم متاهات معقدة ومظلمة (المراحل 31-40)
+            const mazeSize = 12 + (levelNum - 30) * 2;
+            const unit = 4;
+
+            for (let r = 0; r < mazeSize; r++) {
+                for (let c = 0; c < mazeSize; c++) {
+                    if (Math.random() > 0.4 || r === 0 || c === 0 || r === mazeSize - 1 || c === mazeSize - 1) {
+                        createStylizedPlatform((r - mazeSize / 2) * unit, 2, (c - mazeSize / 2) * unit, unit, 5, unit, 0x0f172a);
+                    }
+                }
+            }
+
+            // أرضية المتاهة الممتدة
+            createStylizedPlatform(0, -0.5, 0, mazeSize * unit, 1, mazeSize * unit, 0x1e293b);
+            createEndRoomWithPortal(0, 0, -(mazeSize / 2) * unit + 4);
         }
 
         function buildCaveLevel(levelNum) {
             platforms.forEach(p => scene.remove(p.group));
-            traps.forEach(t => scene.remove(t.mesh));
             coinsArr.forEach(cn => scene.remove(cn.mesh));
-            checkpoints.forEach(cp => scene.remove(cp.group));
             if (key1Obj) scene.remove(key1Obj);
             if (roomDoorObj) scene.remove(roomDoorObj);
 
-            platforms = []; traps = []; coinsArr = []; checkpoints = [];
-            hasKey1 = false; updateHUDKeys();
+            platforms = []; coinsArr = []; checkpoints = [];
 
-            const mapLength = 22 + Math.floor(levelNum * 1.5);
+            if (levelNum > 30) {
+                buildMazeLevel(levelNum);
+                createChasingMonster();
+                return;
+            }
+
+            const mapLength = 25 + Math.floor(levelNum * 1.8);
             let currentZ = 0, currentY = 0, currentX = 0;
 
-            createStylizedPlatform(0, 0, 0, 10, 1.4, 10, 0x1e293b);
+            createStylizedPlatform(0, 0, 0, 8, 1.4, 8, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
-                const gapZ = 6.2 + (levelNum * 0.05); 
-                const stepY = (Math.sin(i * 0.5) * 0.8); 
-                const shiftX = (Math.cos(i * 0.6) * 3.8); 
+                const gapZ = 6.8 + (levelNum * 0.06); 
+                const stepY = (Math.sin(i * 0.6) * 1.1); 
+                const shiftX = (Math.cos(i * 0.7) * 4.5); 
 
                 currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
-                const pWidth = Math.max(3.4, 5.5 - (levelNum * 0.07));
-                let platColor = 0x1e293b;
-                let type = 'normal';
-
-                if (i % 5 === 0) { type = 'disappearing'; platColor = 0x7f1d1d; }
-                else if (i % 3 === 0) { type = 'moving'; platColor = 0x0369a1; }
-
-                createStylizedPlatform(currentX, currentY, currentZ, pWidth, 1.4, pWidth, platColor, type);
-
-                if (i === Math.floor(mapLength / 2)) {
-                    createCheckpoint(currentX, currentY + 0.7, currentZ);
-                }
-
-                if (i % 2 === 0) createCoin(currentX, currentY + 1.6, currentZ);
+                const pWidth = Math.max(2.8, 5.0 - (levelNum * 0.08));
+                createStylizedPlatform(currentX, currentY, currentZ, pWidth, 1.2, pWidth, 0x1e293b);
             }
 
-            createKey1(currentX, currentY + 2, currentZ);
-            createEndRoomWithPortal(currentX, currentY, currentZ - 12);
+            createEndRoomWithPortal(currentX, currentY, currentZ - 10);
             createChasingMonster();
-
-            lastCheckpointPos = { x: 0, y: 3, z: 0 };
-            document.getElementById('hud-cp').textContent = "بداية";
-        }
-
-        function createCoin(x, y, z) {
-            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.1, 10), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8 }));
-            mesh.rotation.x = Math.PI / 2;
-            mesh.position.set(x, y, z);
-            scene.add(mesh);
-            coinsArr.push({ mesh, collected: false });
-        }
-
-        function createKey1(x, y, z) {
-            const group = new THREE.Group(); group.position.set(x, y, z);
-            group.add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 12), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.9 })));
-            key1Obj = group; scene.add(key1Obj);
         }
 
         function createEndRoomWithPortal(x, y, z) {
             roomDoorObj = new THREE.Group();
             roomDoorObj.position.set(x, y, z);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
-            const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 12), new THREE.MeshStandardMaterial({ color: 0x1e1b4b }));
-            floor.position.set(0, 0, 0);
+            // المنصة النهائية المستقرة
+            endPlatformMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 1.5, 10), new THREE.MeshStandardMaterial({ color: 0x1e1b4b }));
+            endPlatformMesh.position.set(0, 0, 0);
 
-            const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 8, 0.8), wallMat); backWall.position.set(0, 4, -6);
-            const portalGeo = new THREE.TorusGeometry(2.0, 0.25, 12, 24);
-            portalRingMesh = new THREE.Mesh(portalGeo, new THREE.MeshBasicMaterial({ color: 0x22c55e }));
-            portalRingMesh.position.set(0, 3.5, -4);
+            const portalRing = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.25, 12, 24), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+            portalRing.position.set(0, 3.2, 0); portalRing.name = "finish";
 
-            const portalCenter = new THREE.Mesh(new THREE.CircleGeometry(1.9, 20), new THREE.MeshBasicMaterial({ color: 0x4ade80, side: THREE.DoubleSide }));
-            portalCenter.position.set(0, 3.5, -4); portalCenter.name = "finish";
-
-            roomDoorObj.add(floor, backWall, portalRingMesh, portalCenter);
+            roomDoorObj.add(endPlatformMesh, portalRing);
             scene.add(roomDoorObj);
+
+            // تسجيل المنصة النهائية في الفيزيائيات لمنع أي سقوط!
+            platforms.push({
+                mesh: endPlatformMesh, group: roomDoorObj, type: 'normal',
+                size: { w: 10, h: 1.5, d: 10 }, pos: { x, y, z }
+            });
         }
 
         function triggerDash() {
-            if (!canDash || isDashing || isDying) return;
-            canDash = false; isDashing = true;
+            if (!canDash || isDying) return;
+            canDash = false;
             playSound(600, 'sawtooth', 0.1);
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion);
-            velocity.x = forward.x * 0.6; velocity.z = forward.z * 0.6;
-            showToast("⚡ اندفاع سريع!");
-            setTimeout(() => { isDashing = false; }, 220);
+            velocity.z -= 0.55;
             setTimeout(() => { canDash = true; }, 1000);
         }
 
@@ -557,13 +503,15 @@
             currentLevel = parseInt(document.getElementById('level-select').value);
 
             document.getElementById('hud-level').textContent = currentLevel;
+            document.getElementById('hud-coins').textContent = coinsCount;
             document.getElementById('menu').style.display = 'none';
 
             if (!scene) initScene();
 
-            createCustomPlayer();
+            playerGroup = new THREE.Group();
+            scene.add(playerGroup);
+
             buildCaveLevel(currentLevel);
-            
             respawnPlayer();
             animate();
         }
@@ -573,19 +521,18 @@
             isDying = true; deathCount++;
             playSound(150, 'sawtooth', 0.3);
             document.getElementById('hud-deaths').textContent = deathCount;
-            playerGroup.visible = false;
             
             setTimeout(() => {
-                isDying = false; playerGroup.visible = true;
+                isDying = false;
                 respawnPlayer();
-            }, 500);
+            }, 400);
         }
 
         function respawnPlayer() {
-            playerGroup.position.set(lastCheckpointPos.x, lastCheckpointPos.y, lastCheckpointPos.z);
+            playerGroup.position.set(0, 2.5, 0);
             velocity = { x: 0, y: 0, z: 0 };
-            playerGroup.rotation.y = 0;
-            if (monsterGroup) monsterGroup.position.set(lastCheckpointPos.x, lastCheckpointPos.y - 1, lastCheckpointPos.z + 14);
+            yaw = 0; pitch = 0;
+            if (monsterGroup) monsterGroup.position.set(0, 0, 14);
         }
 
         function showToast(text) {
@@ -594,20 +541,17 @@
             setTimeout(() => msg.style.opacity = '0', 1800);
         }
 
-        function updateHUDKeys() {
-            document.getElementById('hud-key1').textContent = hasKey1 ? "✔️" : "❌";
-        }
-
         function openWinModal() {
             confetti({ particleCount: 100, spread: 70 });
             playSound(580, 'sine', 0.4);
-            localStorage.setItem('r4d_level', Math.min(30, currentLevel + 1));
+            localStorage.setItem('fw_level', Math.min(40, currentLevel + 1));
+            document.exitPointerLock();
             document.getElementById('win-modal').style.display = 'block';
         }
 
         function nextLevelAction() {
             document.getElementById('win-modal').style.display = 'none';
-            if (currentLevel < 30) {
+            if (currentLevel < 40) {
                 currentLevel++;
                 document.getElementById('hud-level').textContent = currentLevel;
                 buildCaveLevel(currentLevel);
@@ -617,61 +561,25 @@
             }
         }
 
-        function updatePlayerAnimations(speed) {
-            if (!leftArm || !rightArm || !leftLeg || !rightLeg) return;
-
-            if (!isGrounded) {
-                leftArm.rotation.x = -Math.PI * 0.7;
-                rightArm.rotation.x = -Math.PI * 0.7;
-                leftLeg.rotation.x = Math.PI * 0.2;
-                rightLeg.rotation.x = -Math.PI * 0.2;
-            } else if (speed > 0.03) {
-                animTime += speed * 2.8;
-                const armAngle = Math.sin(animTime) * 0.7;
-                const legAngle = Math.cos(animTime) * 0.7;
-
-                leftArm.rotation.x = armAngle;
-                rightArm.rotation.x = -armAngle;
-                leftLeg.rotation.x = legAngle;
-                rightLeg.rotation.x = -legAngle;
-            } else {
-                leftArm.rotation.x = 0; rightArm.rotation.x = 0;
-                leftLeg.rotation.x = 0; rightLeg.rotation.x = 0;
-            }
-        }
-
         function animate() {
             requestAnimationFrame(animate);
             if (isDying) { renderer.render(scene, camera); return; }
 
             const time = Date.now() * 0.003;
 
-            // تحريك المنصات الذكية
-            platforms.forEach(p => {
-                if (p.type === 'moving') {
-                    p.group.position.x = p.pos.x + Math.sin(time + p.timeOffset) * 2.5;
-                } else if (p.type === 'disappearing') {
-                    const vis = Math.sin(time * 2 + p.timeOffset) > 0;
-                    p.group.visible = vis;
-                }
-            });
-
             // حركة وحش المغارة المطارد
             if (monsterGroup && playerGroup) {
                 monsterGroup.position.z -= monsterSpeed;
-                monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.03;
+                monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.02;
                 monsterGroup.position.y = playerGroup.position.y - 0.2;
 
-                monsterLeftArm.rotation.x = Math.sin(time * 3) * 0.5;
-                monsterRightArm.rotation.x = -Math.sin(time * 3) * 0.5;
-
                 if (playerGroup.position.distanceTo(monsterGroup.position) < 2.2) {
-                    showToast("👹 التهمك الوحش!");
+                    showToast("👹 ألمحك الوحش وهاجمك!");
                     triggerDeathAnimation();
                 }
             }
 
-            // حركة وديناميكية التحكم باللاعب
+            // حركة اللاعب بدعم زوايا رؤية الكاميرا (First-Person Movements)
             targetVelocity.x = 0; targetVelocity.z = 0;
             let moveSpeed = baseSpeed;
 
@@ -680,17 +588,18 @@
             if (keys['arrowup'] || keys['w']) targetVelocity.z = -moveSpeed;
             if (keys['arrowdown'] || keys['s']) targetVelocity.z = moveSpeed;
 
-            velocity.x += (targetVelocity.x - velocity.x) * 0.28;
-            velocity.z += (targetVelocity.z - velocity.z) * 0.28;
+            // تحويل الاتجاهات حسب زاوية النظر Yaw
+            const cos = Math.cos(yaw);
+            const sin = Math.sin(yaw);
 
-            const horizSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-            if (horizSpeed > 0.02) {
-                playerGroup.rotation.y = Math.atan2(-velocity.x, -velocity.z);
-            }
+            let vx = targetVelocity.x * cos - targetVelocity.z * sin;
+            let vz = targetVelocity.x * sin + targetVelocity.z * cos;
 
+            velocity.x += (vx - velocity.x) * 0.25;
+            velocity.z += (vz - velocity.z) * 0.25;
             velocity.y -= gravity;
 
-            // نظام تصادم ثنائي الأبعاد ودقيق جداً لمنع السقوط الحادث (AABB Box Collider)
+            // نظام التصادم الفيزيائي الممتاز المحسن (Box Collision Physics)
             let nextX = playerGroup.position.x + velocity.x;
             let nextY = playerGroup.position.y + velocity.y;
             let nextZ = playerGroup.position.z + velocity.z;
@@ -698,9 +607,7 @@
             isGrounded = false;
 
             for (let p of platforms) {
-                if (!p.group.visible) continue;
-
-                const pX = p.group.position.x;
+                const pX = p.pos.x;
                 const pY = p.pos.y;
                 const pZ = p.pos.z;
 
@@ -708,7 +615,6 @@
                 const pHalfH = p.size.h / 2;
                 const pHalfD = p.size.d / 2;
 
-                // التحقق من تداخل الصناديق في محاور X, Z
                 const overlapX = (nextX + playerSize.w / 2 > pX - pHalfW) && (nextX - playerSize.w / 2 < pX + pHalfW);
                 const overlapZ = (nextZ + playerSize.d / 2 > pZ - pHalfD) && (nextZ - playerSize.d / 2 < pZ + pHalfD);
 
@@ -716,8 +622,7 @@
                     const playerBottom = nextY;
                     const platformTop = pY + pHalfH;
 
-                    // الاستقرار فوق سطح المنصة بدقة ومنع الهبوط تحتها
-                    if (velocity.y <= 0 && playerBottom <= platformTop + 0.25 && playerBottom >= platformTop - 0.5) {
+                    if (velocity.y <= 0 && playerBottom <= platformTop + 0.3 && playerBottom >= platformTop - 0.6) {
                         nextY = platformTop;
                         velocity.y = 0;
                         isGrounded = true;
@@ -726,54 +631,28 @@
                 }
             }
 
-            playerGroup.position.x = nextX;
-            playerGroup.position.y = nextY;
-            playerGroup.position.z = nextZ;
+            playerGroup.position.set(nextX, nextY, nextZ);
 
-            updatePlayerAnimations(horizSpeed);
+            // تثبيت الكاميرا عند مستوى عين الشخص الأول ومحاكات المشي (Head Bobbing)
+            const headBob = isGrounded && (Math.abs(velocity.x) > 0.05 || Math.abs(velocity.z) > 0.05) ? Math.sin(time * 12) * 0.08 : 0;
+            camera.position.set(playerGroup.position.x, playerGroup.position.y + 1.5 + headBob, playerGroup.position.z);
 
-            // تفعيل الشيكبوينت
-            checkpoints.forEach(cp => {
-                if (!cp.active && playerGroup.position.distanceTo(cp.group.position) < 2.0) {
-                    cp.active = true;
-                    lastCheckpointPos = cp.pos;
-                    cp.group.getObjectByName("flagMesh").material.color.setHex(0x22c55e);
-                    playSound(750, 'sine', 0.2);
-                    showToast("🚩 تم حفظ موقعك!");
-                    document.getElementById('hud-cp').textContent = "محفوظة";
-                }
-            });
-
-            // جمع العملات والمفتاح
-            coinsArr.forEach(c => {
-                if (!c.collected && playerGroup.position.distanceTo(c.mesh.position) < 1.2) {
-                    c.collected = true; scene.remove(c.mesh);
-                    coinsCount += 10; document.getElementById('hud-coins').textContent = coinsCount;
-                    playSound(800, 'sine', 0.15);
-                }
-            });
-
-            if (key1Obj && !hasKey1 && playerGroup.position.distanceTo(key1Obj.position) < 1.5) {
-                hasKey1 = true; scene.remove(key1Obj); updateHUDKeys();
-                showToast("🔑 جمعت المفتاح!");
-            }
+            // تدوير رؤية الكاميرا
+            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+            euler.x = pitch; euler.y = yaw;
+            camera.quaternion.setFromEuler(euler);
 
             if (playerGroup.position.y < -12) triggerDeathAnimation();
 
+            // التحقق من الوصول لمنصة البوابة النهائية
             const finishObj = scene.getObjectByName("finish");
             if (finishObj) {
                 const finishWorldPos = new THREE.Vector3();
                 finishObj.getWorldPosition(finishWorldPos);
-                if (playerGroup.position.distanceTo(finishWorldPos) < 2.0) {
-                    openWinModal(); playerGroup.position.z -= 2;
+                if (playerGroup.position.distanceTo(finishWorldPos) < 2.5) {
+                    openWinModal();
                 }
             }
-
-            // كاميرا المتتبع السلسة
-            camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
-            camera.position.y += (playerGroup.position.y + 4.2 - camera.position.y) * 0.1;
-            camera.position.z += (playerGroup.position.z + 9.5 - camera.position.z) * 0.1;
-            camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z - 2);
 
             renderer.render(scene, camera);
         }
