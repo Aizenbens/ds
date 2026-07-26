@@ -13,7 +13,7 @@ export default function App() {
         fontFamily: "Arial",
       }}
     >
-      KRUNK WAR
+     FROM WHO?
     </h1>
   );
 }
