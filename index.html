@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>روبلوكس 4D - النسخة المبتكرة</title>
+    <title>روبلوكس 4D - النسخة الواقعية الاحترافية</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #020617; user-select: none; touch-action: none; }
@@ -13,10 +13,10 @@
             transform: translate(-50%, -50%);
             background: rgba(15, 23, 42, 0.95); padding: 20px;
             border-radius: 20px; color: #f8fafc; text-align: center;
-            box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 0 35px rgba(56, 189, 248, 0.4);
             border: 2px solid rgba(56, 189, 248, 0.5);
             z-index: 10; width: 92%; max-width: 420px; max-height: 90vh; overflow-y: auto;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
         }
 
         #menu h1 { margin-top: 0; color: #38bdf8; text-shadow: 0 0 10px #0284c7; font-size: 20px; }
@@ -175,7 +175,7 @@
         }
 
         let scene, camera, renderer;
-        let playerGroup, leftArm, rightArm, leftLeg, rightLeg;
+        let playerGroup, leftArm, rightArm, leftLeg, rightLeg, headMesh;
         let portalRingMesh = null;
         let platforms = [], traps = [], coinsArr = [];
         let key1Obj = null, roomDoorObj = null;
@@ -186,39 +186,43 @@
         let currentLevel = savedLevel;
         let isGrounded = false, isOnIce = false;
         let jumpsLeft = 2; const maxJumps = 2;
-        
         let canDash = true, isDashing = false;
 
-        // فيزياء متزنة ومحسنة
-        const gravity = 0.012;
+        // متغيرات الأنيميشن والفيزياء الواقعية
+        let animTime = 0;
+        const gravity = 0.013;
         let velocity = { x: 0, y: 0, z: 0 };
         let targetVelocity = { x: 0, z: 0 };
-        let baseSpeed = 0.20;
-        let jumpForce = 0.34;
+        let baseSpeed = 0.22;
+        let jumpForce = 0.36;
         const keys = {};
 
         function initScene() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020617);
-
-            // إضافة ضباب بيئي يعطي جمالية في العمق
-            scene.fog = new THREE.FogExp2(0x020617, 0.015);
+            scene.fog = new THREE.FogExp2(0x020617, 0.012);
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
             
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
-            dirLight.position.set(20, 40, 20);
+            dirLight.position.set(20, 45, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 150;
             scene.add(dirLight);
 
-            // إضافة خلفية نجوم بسيطة
             createStarfield();
 
             if ('ontouchstart' in window) {
@@ -238,13 +242,13 @@
 
         function createStarfield() {
             const starGeo = new THREE.BufferGeometry();
-            const count = 300;
+            const count = 350;
             const posArray = new Float32Array(count * 3);
             for(let i=0; i<count*3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 200;
+                posArray[i] = (Math.random() - 0.5) * 220;
             }
             starGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const starMat = new THREE.PointsMaterial({ size: 0.6, color: 0x38bdf8 });
+            const starMat = new THREE.PointsMaterial({ size: 0.7, color: 0x38bdf8 });
             const starMesh = new THREE.Points(starGeo, starMat);
             scene.add(starMesh);
         }
@@ -258,6 +262,7 @@
             }
         }
 
+        // تصميم مجسم مفصل مع محاور دوران جاهزة للأنيميشن
         function createCustomPlayer() {
             if (playerGroup) scene.remove(playerGroup);
             playerGroup = new THREE.Group();
@@ -268,14 +273,14 @@
             const eyeColor = document.getElementById('eye-color-input').value;
             const hairStyle = document.getElementById('hair-style-select').value;
 
-            const skinMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
-            const shirtMat = new THREE.MeshLambertMaterial({ color: shirtColor });
-            const pantsMat = new THREE.MeshLambertMaterial({ color: pantsColor });
-            const hairMat = new THREE.MeshLambertMaterial({ color: hairColor });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.5 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.5 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
             const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
-            head.position.y = 1.5;
+            headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
+            headMesh.position.y = 1.5; headMesh.castShadow = true;
 
             const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), eyeMat);
             eye1.position.set(-0.2, 1.55, -0.41);
@@ -294,27 +299,77 @@
                 hairMesh.position.set(0, 1.95, 0);
             }
 
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat); torso.position.y = 0.6;
-            leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.35), skinMat); leftArm.position.set(-0.65, 0.65, 0);
-            rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.35), skinMat); rightArm.position.set(0.65, 0.65, 0);
-            leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.4), pantsMat); leftLeg.position.set(-0.22, -0.3, 0);
-            rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.4), pantsMat); rightLeg.position.set(0.22, -0.3, 0);
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat); 
+            torso.position.y = 0.6; torso.castShadow = true;
 
-            playerGroup.add(head, eye1, eye2, hairMesh, torso, leftArm, rightArm, leftLeg, rightLeg);
+            // الأذرع مع تحسين محاور الدوران للأنيميشن
+            leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
+            leftArm.geometry.translate(0, -0.35, 0);
+            leftArm.position.set(-0.62, 1.0, 0); leftArm.castShadow = true;
+
+            rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
+            rightArm.geometry.translate(0, -0.35, 0);
+            rightArm.position.set(0.62, 1.0, 0); rightArm.castShadow = true;
+
+            // الأرجل مع تحسين محاور الدوران
+            leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
+            leftLeg.geometry.translate(0, -0.35, 0);
+            leftLeg.position.set(-0.22, 0.1, 0); leftLeg.castShadow = true;
+
+            rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
+            rightLeg.geometry.translate(0, -0.35, 0);
+            rightLeg.position.set(0.22, 0.1, 0); rightLeg.castShadow = true;
+
+            playerGroup.add(headMesh, eye1, eye2, hairMesh, torso, leftArm, rightArm, leftLeg, rightLeg);
             scene.add(playerGroup);
         }
 
-        // بناء المنصات مع حواف جميلة وبنية تحتية قوية لمنع السقوط
+        // تحديث محرك أنيميشن الحركة الانسيابية
+        function updatePlayerAnimations() {
+            if (!playerGroup || isDying) return;
+
+            const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            
+            if (!isGrounded) {
+                // أنيميشن القفز والطيران
+                leftArm.rotation.x = -Math.PI * 0.8;
+                rightArm.rotation.x = -Math.PI * 0.8;
+                leftLeg.rotation.x = Math.PI * 0.2;
+                rightLeg.rotation.x = -Math.PI * 0.2;
+            } else if (speed > 0.03) {
+                // أنيميشن الجري/المشي التبادلي
+                animTime += speed * 2.5;
+                const armAngle = Math.sin(animTime) * 0.7;
+                const legAngle = Math.cos(animTime) * 0.7;
+
+                leftArm.rotation.x = armAngle;
+                rightArm.rotation.x = -armAngle;
+                leftLeg.rotation.x = legAngle;
+                rightLeg.rotation.x = -legAngle;
+
+                // امالة خفيفة للرأس أثناء الركض
+                headMesh.position.y = 1.5 + Math.sin(animTime * 2) * 0.05;
+            } else {
+                // أنيميشن الوقوف والخمول (Idle Breathing)
+                animTime += 0.03;
+                leftArm.rotation.x = Math.sin(animTime) * 0.05;
+                rightArm.rotation.x = -Math.sin(animTime) * 0.05;
+                leftLeg.rotation.x = 0;
+                rightLeg.rotation.x = 0;
+                headMesh.position.y = 1.5 + Math.sin(animTime) * 0.02;
+            }
+        }
+
         function createStylizedPlatform(x, y, z, w, h, d, colorHex, type = 'normal') {
             const group = new THREE.Group();
 
-            // جسم المنصة الأساسي
-            const mainMat = new THREE.MeshPhongMaterial({ color: colorHex, shininess: 30 });
+            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4, metalness: 0.1 });
             const mainMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mainMat);
+            mainMesh.receiveShadow = true;
+            mainMesh.castShadow = true;
             group.add(mainMesh);
 
-            // إطار/حافة علوية متميزة للمنصة (Roblox Style Border)
-            const borderMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: false });
+            const borderMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
             const topBorder = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.1, d + 0.1), borderMat);
             topBorder.position.y = h / 2 + 0.05;
             group.add(topBorder);
@@ -323,11 +378,8 @@
             scene.add(group);
 
             platforms.push({ 
-                mesh: mainMesh, 
-                group: group, 
-                type: type, 
-                size: { w, h, d },
-                pos: { x, y, z }
+                mesh: mainMesh, group: group, type: type, 
+                size: { w, h, d }, pos: { x, y, z }
             });
         }
 
@@ -344,7 +396,6 @@
             const mapLength = 22 + Math.floor(levelNum * 1.3);
             let currentZ = 0, currentY = 0, currentX = 0;
 
-            // المنصة الأولى واسعة وثابتة
             createStylizedPlatform(0, 0, 0, 10, 1.2, 10, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
@@ -352,9 +403,7 @@
                 const stepY = (Math.sin(i * 0.4) * 0.6); 
                 const shiftX = (Math.cos(i * 0.5) * 3.2); 
 
-                currentZ -= gapZ;
-                currentY += stepY;
-                currentX = shiftX;
+                currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
                 const pWidth = Math.max(4.0, 7 - (levelNum * 0.08));
                 let platColor = 0x334155;
@@ -374,7 +423,7 @@
         }
 
         function createCoin(x, y, z) {
-            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.1, 10), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.1, 10), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 }));
             mesh.rotation.x = Math.PI / 2;
             mesh.position.set(x, y, z);
             scene.add(mesh);
@@ -391,27 +440,23 @@
 
         function createKey1(x, y, z) {
             const group = new THREE.Group(); group.position.set(x, y, z);
-            group.add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 12), new THREE.MeshBasicMaterial({ color: 0xfacc15 })));
+            group.add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 12), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.9, roughness: 0.1 })));
             key1Obj = group; scene.add(key1Obj);
         }
 
-        // بناء الغرفة الأخيرة والبوابة النهائية بشكل متقن
         function createEndRoomWithPortal(x, y, z) {
             roomDoorObj = new THREE.Group();
             roomDoorObj.position.set(x, y, z);
 
-            const wallMat = new THREE.MeshPhongMaterial({ color: 0x0f172a });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
             
-            // أرضية الغرفة
-            const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 12), new THREE.MeshPhongMaterial({ color: 0x1e1b4b }));
-            floor.position.set(0, 0, 0);
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 12), new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.4 }));
+            floor.position.set(0, 0, 0); floor.receiveShadow = true;
 
-            // جدران الغرفة
             const backWall = new THREE.Mesh(new THREE.BoxGeometry(12, 8, 0.8), wallMat); backWall.position.set(0, 4, -6);
             const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 12), wallMat); leftWall.position.set(-6, 4, 0);
             const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, 8, 12), wallMat); rightWall.position.set(6, 4, 0);
 
-            // البوابة النهائية الدوارة
             const portalGeo = new THREE.TorusGeometry(2.0, 0.25, 12, 24);
             const portalMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
             portalRingMesh = new THREE.Mesh(portalGeo, portalMat);
@@ -429,7 +474,7 @@
             if (!canDash || isDashing || isDying) return;
             canDash = false; isDashing = true;
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion);
-            velocity.x = forward.x * 0.5; velocity.z = forward.z * 0.5;
+            velocity.x = forward.x * 0.52; velocity.z = forward.z * 0.52;
             showToast("⚡ اندفاع!");
             setTimeout(() => { isDashing = false; }, 200);
             setTimeout(() => { canDash = true; }, 1200);
@@ -503,10 +548,9 @@
             requestAnimationFrame(animate);
             if (isDying) { renderer.render(scene, camera); return; }
 
-            // تدريب البوابة على الدوران
             if (portalRingMesh) portalRingMesh.rotation.z += 0.03;
 
-            // تحكم وحركة انسيابية
+            // فيزياء واقعية وتنعيم التتباطؤ
             targetVelocity.x = 0; targetVelocity.z = 0;
             let moveSpeed = isOnIce ? baseSpeed * 1.25 : baseSpeed;
 
@@ -515,8 +559,8 @@
             if (keys['arrowup'] || keys['w']) targetVelocity.z = -moveSpeed;
             if (keys['arrowdown'] || keys['s']) targetVelocity.z = moveSpeed;
 
-            velocity.x += (targetVelocity.x - velocity.x) * (isOnIce ? 0.05 : 0.3);
-            velocity.z += (targetVelocity.z - velocity.z) * (isOnIce ? 0.05 : 0.3);
+            velocity.x += (targetVelocity.x - velocity.x) * (isOnIce ? 0.04 : 0.25);
+            velocity.z += (targetVelocity.z - velocity.z) * (isOnIce ? 0.04 : 0.25);
 
             if (Math.abs(velocity.x) > 0.02 || Math.abs(velocity.z) > 0.02) {
                 playerGroup.rotation.y = Math.atan2(-velocity.x, -velocity.z);
@@ -527,10 +571,13 @@
             playerGroup.position.y += velocity.y;
             playerGroup.position.z += velocity.z;
 
-            // --- نظام تصادم فيزيائي دقيق ومحكم لمنع السقوط أو الاختراق ---
+            // تحديث أنيميشن الشخصية المتقدم
+            updatePlayerAnimations();
+
+            // تصادم فيزيائي دقيق ومحكم
             isGrounded = false; isOnIce = false;
             
-            const playerFeetY = playerGroup.position.y - 0.75; // موقع أقدام الشخصية
+            const playerFeetY = playerGroup.position.y - 0.75;
             const playerX = playerGroup.position.x;
             const playerZ = playerGroup.position.z;
 
@@ -539,11 +586,9 @@
                 const halfD = p.size.d / 2 + 0.3;
                 const topY = p.pos.y + p.size.h / 2;
 
-                // فحص الحدود الأفقية للمنصة
                 if (playerX >= p.pos.x - halfW && playerX <= p.pos.x + halfW &&
                     playerZ >= p.pos.z - halfD && playerZ <= p.pos.z + halfD) {
                     
-                    // التثبيت عند ملامسة السطح أثناء السقوط
                     if (velocity.y <= 0 && playerFeetY <= topY && playerFeetY >= topY - 0.5) {
                         playerGroup.position.y = topY + 0.75;
                         velocity.y = 0;
@@ -556,8 +601,9 @@
                 }
             }
 
-            // التصادم مع العناصر والمفتاح
+            // جمع المقتنيات والعناصر
             coinsArr.forEach(c => {
+                c.mesh.rotation.z += 0.05;
                 if (!c.collected && playerGroup.position.distanceTo(c.mesh.position) < 1.2) {
                     c.collected = true; scene.remove(c.mesh);
                     coinsCount += 10; document.getElementById('hud-coins').textContent = coinsCount;
@@ -568,14 +614,15 @@
                 if (playerGroup.position.distanceTo(trap.mesh.position) < 1.5) triggerDeathAnimation();
             });
 
-            if (key1Obj && !hasKey1 && playerGroup.position.distanceTo(key1Obj.position) < 1.5) {
-                hasKey1 = true; scene.remove(key1Obj); updateHUDKeys(); showToast("🔑 جمعت المفتاح المفتاح!");
+            if (key1Obj && !hasKey1) {
+                key1Obj.rotation.y += 0.04;
+                if (playerGroup.position.distanceTo(key1Obj.position) < 1.5) {
+                    hasKey1 = true; scene.remove(key1Obj); updateHUDKeys(); showToast("🔑 جمعت المفتاح!");
+                }
             }
 
-            // السقوط في الهاوية
             if (playerGroup.position.y < -12) triggerDeathAnimation();
 
-            // دخول البوابة النهائية
             const finishObj = scene.getObjectByName("finish");
             if (finishObj) {
                 const finishWorldPos = new THREE.Vector3();
@@ -585,7 +632,7 @@
                 }
             }
 
-            // كاميرة متتبعة ذكية بمظهر أفقي
+            // كاميرا متتبعة انسيابية
             camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
             camera.position.y += (playerGroup.position.y + 4.0 - camera.position.y) * 0.1;
             camera.position.z += (playerGroup.position.z + 9.5 - camera.position.z) * 0.1;
