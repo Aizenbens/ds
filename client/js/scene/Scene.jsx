@@ -4,7 +4,12 @@ import Lights from "./Lights.jsx";
 
 export default function Scene() {
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+      }}
+    >
       <Canvas
         shadows
         camera={{
@@ -14,13 +19,16 @@ export default function Scene() {
       >
         <Lights />
 
-        {/* أرضية مؤقتة */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        {/* أرضية */}
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+        >
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#4caf50" />
         </mesh>
 
-        {/* مكعب تجريبي */}
+        {/* مكعب */}
         <mesh position={[0, 1, 0]} castShadow>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial color="orange" />
