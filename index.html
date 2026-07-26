@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - لعبة الرعب والباركور</title>
+    <title>Escape The Unknown - الخريطة الموردة والمستويات</title>
     
     <link rel="stylesheet" href="CSS/style.css">
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <script src="js/player.js"></script>
 </head>
 <body>
 
@@ -18,8 +15,8 @@
     <div id="toast-msg"></div>
 
     <div id="menu">
-        <h1>👁️ البقاء على قيد الحياة 👁️</h1>
-        <p>اتبع الشموع المضيئة على الجدران لإيجاد طريقك. استخدم الباركور، الانزلاق، والسرعة للهرب من الوحش والوصول للمخرج!</p>
+        <h1>👁️ البقاء على قيد الحياة - المستويات 👁️</h1>
+        <p>اعثر على المفاتيح للانتقال بين المستويات، وافتح المخرج النهائي في أسرع وقت ممكن!</p>
         <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
@@ -31,6 +28,10 @@
         <div class="hud-card">
             <span>🔦 البطارية:</span>
             <div class="bar-container"><div id="battery-bar"></div></div>
+        </div>
+        <div class="hud-card">
+            <span>🏰 المستوى:</span>
+            <span id="hud-level" style="color: #38bdf8;">1 (الطابق الأرضي)</span>
         </div>
         <div class="hud-card">
             <span>🔑 الهدف:</span>
@@ -45,7 +46,7 @@
     </div>
 
     <div id="controls-hint">
-        [W,A,S,D] حركة | [Click/Shift] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] التقاط / تفاعل
+        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] التقاط / فتح
     </div>
 
     <script>
@@ -55,7 +56,8 @@
         let exitDoor = null;
         let isGameStarted = false;
 
-        // إحصائيات اللاعب الأساسية
+        // إحصائيات ونظام المستويات
+        let currentLevel = 1;
         let stamina = 100, battery = 100;
         let isFlashlightOn = true;
         let isSprinting = false, isCrouching = false, isGrounded = false;
@@ -66,8 +68,9 @@
         let yaw = 0, pitch = 0;
         const keys = {};
 
-        // الأغراض التفاعلية في المشهد
+        // الأغراض والشموع
         let interactables = [];
+        let mapObjects = [];
 
         // النظام الصوتي
         let audioCtx = null;
@@ -102,7 +105,7 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a10);
+            scene.background = new THREE.Color(0x050508);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
@@ -111,14 +114,14 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.45); 
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.35); 
             scene.add(ambientLight);
 
             flashlight = new THREE.SpotLight(0xfffaed, 6, 50, Math.PI / 3, 0.4);
             scene.add(flashlight);
             scene.add(flashlight.target);
 
-            // إعداد التفاعل مع الماوس ولوحة المفاتيح
+            // إعداد أزرار الحركة
             window.addEventListener('mousedown', (e) => {
                 initAudio();
                 if (e.button === 0) keys['mousedown'] = true;
@@ -160,66 +163,97 @@
             window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
             window.addEventListener('resize', onWindowResize);
 
-            createEnvironment();
-            createSmartMonster();
+            buildLevel(currentLevel);
         }
 
-        function createEnvironment() {
-            // الأرضية
-            const floor = new THREE.Mesh(
-                new THREE.BoxGeometry(100, 1, 100),
-                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
-            );
+        // بناء وتوسيع الخريطة حسب المستوى الحالي
+        function buildLevel(level) {
+            // تنظيف الخريطة السابقة
+            mapObjects.forEach(obj => scene.remove(obj));
+            interactables.forEach(item => scene.remove(item.mesh));
+            mapObjects = [];
+            interactables = [];
+            hasKey = false;
+            document.getElementById('slot-2').textContent = '❌';
+
+            const floorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x1e293b : 0x0f172a, roughness: 0.5 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x334155 : 0x1e1b4b, roughness: 0.7 });
+
+            // توسيع أرضية الخريطة إلى 160 × 160
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 160), floorMat);
             floor.position.set(0, -0.5, 0);
             scene.add(floor);
+            mapObjects.push(floor);
 
-            // جدران المتاهة
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+            // جدران المتاهة الموسعة والغرف الإضافية
             const walls = [
-                { x: 0, z: -20, w: 40, h: 8, d: 2 },
-                { x: -15, z: 0, w: 2, h: 8, d: 30 },
-                { x: 15, z: 5, w: 2, h: 8, d: 25 },
-                { x: 5, z: 15, w: 20, h: 8, d: 2 }
+                // المحيط الخارجي
+                { x: 0, z: -80, w: 160, h: 10, d: 2 },
+                { x: 0, z: 80, w: 160, h: 10, d: 2 },
+                { x: -80, z: 0, w: 2, h: 10, d: 160 },
+                { x: 80, z: 0, w: 2, h: 10, d: 160 },
+
+                // الغرف والممرات الداخلية الموسعة
+                { x: -20, z: -30, w: 60, h: 10, d: 2 },
+                { x: 30, z: 20, w: 2, h: 10, d: 80 },
+                { x: -40, z: 20, w: 40, h: 10, d: 2 },
+                { x: 10, z: -50, w: 2, h: 10, d: 40 },
+                { x: -50, z: -20, w: 2, h: 10, d: 60 },
+                { x: 40, z: -30, w: 50, h: 10, d: 2 }
             ];
 
             walls.forEach(w => {
                 const wall = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), wallMat);
                 wall.position.set(w.x, w.h / 2, w.z);
                 scene.add(wall);
+                mapObjects.push(wall);
             });
 
-            // الشموع المضيئة
-            const candlePositions = [
-                { x: 0, z: 15 }, { x: -10, z: 0 }, { x: 10, z: -10 }, { x: 0, z: -25 }
+            // إضافة شموع على الحوائط
+            const candles = [
+                { x: 0, z: 50 }, { x: -30, z: 0 }, { x: 30, z: -20 }, { x: -50, z: -60 }, { x: 50, z: 40 }
             ];
 
-            candlePositions.forEach(pos => {
-                const candleLight = new THREE.PointLight(0xff7700, 3, 15);
-                candleLight.position.set(pos.x, 2.5, pos.z);
+            candles.forEach(pos => {
+                const candleLight = new THREE.PointLight(0xff7700, 3.5, 20);
+                candleLight.position.set(pos.x, 3, pos.z);
                 scene.add(candleLight);
+                mapObjects.push(candleLight);
 
                 const candleMesh = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.12, 0.12, 0.6),
+                    new THREE.CylinderGeometry(0.15, 0.15, 0.7),
                     new THREE.MeshBasicMaterial({ color: 0xffaa00 })
                 );
-                candleMesh.position.set(pos.x, 2, pos.z);
+                candleMesh.position.set(pos.x, 2.5, pos.z);
                 scene.add(candleMesh);
+                mapObjects.push(candleMesh);
             });
 
-            // إنشاء عناصر البطارية والمفتاح
-            createItem(-12, 1, -5, 'battery', 0x38bdf8);
-            createItem(12, 1, -15, 'key', 0xfacc15);
+            // وضع المفاتيح والبطاريات بأماكن مختلفة
+            if (level === 1) {
+                createItem(-60, 1, -60, 'key', 0xfacc15);
+                createItem(20, 1, 30, 'battery', 0x38bdf8);
+                document.getElementById('hud-level').textContent = "1 (الطابق الأرضي)";
+            } else {
+                createItem(60, 1, -60, 'key', 0xfacc15);
+                createItem(-30, 1, 40, 'battery', 0x38bdf8);
+                document.getElementById('hud-level').textContent = "2 (السرداب السفلي 💀)";
+            }
 
-            // باب المخرج
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.3 });
-            exitDoor = new THREE.Mesh(new THREE.BoxGeometry(4, 7, 0.5), doorMat);
-            exitDoor.position.set(0, 3.5, -19);
+            // إنشاء باب الانتقال/المخرج
+            const doorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x2563eb : 0xb91c1c, roughness: 0.3 });
+            if (exitDoor) scene.remove(exitDoor);
+            exitDoor = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 0.5), doorMat);
+            exitDoor.position.set(0, 4, -79);
             scene.add(exitDoor);
+
+            // إنشاء أو إعادة رسم الوحش
+            createSmartMonster(level);
         }
 
         function createItem(x, y, z, type, color) {
             const mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.BoxGeometry(0.7, 0.7, 0.7),
                 new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 })
             );
             mesh.position.set(x, y, z);
@@ -231,17 +265,17 @@
             if (!playerGroup) return;
 
             interactables.forEach((item, index) => {
-                if (playerGroup.position.distanceTo(item.pos) < 2.8) {
+                if (playerGroup.position.distanceTo(item.pos) < 3.0) {
                     if (item.type === 'battery') {
-                        battery = Math.min(100, battery + 50);
+                        battery = Math.min(100, battery + 60);
                         document.getElementById('slot-1').textContent = '🔋';
-                        showToast("🔋 تم جمع بطارية جديدة!");
+                        showToast("🔋 تم جمع بطارية جيدة!");
                     } else if (item.type === 'key') {
                         hasKey = true;
                         document.getElementById('slot-2').textContent = '🔑';
-                        document.getElementById('hud-status').textContent = "اذهب إلى المخرج النهائي! 🚪";
+                        document.getElementById('hud-status').textContent = currentLevel === 1 ? "توجه إلى الباب للانتقال للمستوى 2! 🚪" : "اخرج الآن! 🚪";
                         document.getElementById('hud-status').style.color = "#22c55e";
-                        showToast("🔑 حصلت على المفتاح الرئيسي!");
+                        showToast("🔑 حصلت على المفتاح!");
                     }
                     scene.remove(item.mesh);
                     interactables.splice(index, 1);
@@ -249,33 +283,42 @@
                 }
             });
 
-            if (exitDoor && playerGroup.position.distanceTo(exitDoor.position) < 3.5) {
+            // فتح الباب أو الانتقال للمستوى الثاني
+            if (exitDoor && playerGroup.position.distanceTo(exitDoor.position) < 4.0) {
                 if (hasKey) {
-                    showToast("🎉 مبروك! لقد نجحت في الهروب من اللعبة!");
-                    playSound(800, 'sine', 0.5);
-                    setTimeout(() => location.reload(), 2500);
+                    if (currentLevel === 1) {
+                        currentLevel = 2;
+                        showToast("⚡ انتقلت إلى المستوى الثاني (السرداب السفلي)!");
+                        playerGroup.position.set(0, 1.8, 65);
+                        buildLevel(2);
+                    } else {
+                        showToast("🎉 مبروك! لقد هربت من المتاهة بالكامل وتجاوزت جميع المستويات!");
+                        playSound(800, 'sine', 0.5);
+                        setTimeout(() => location.reload(), 3000);
+                    }
                 } else {
-                    showToast("🔒 الباب مغلق! تحتاج إلى المفتاح الذهبي!");
+                    showToast("🔒 الباب مغلق! ابحث عن المفتاح المخفي أولاً!");
                     playSound(150, 'sawtooth', 0.2);
                 }
             }
         }
 
-        function createSmartMonster() {
+        function createSmartMonster(level) {
+            if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.2 });
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const bodyMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x050505 : 0x450a0a, roughness: 0.2 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: level === 1 ? 0xff0000 : 0xfacc15 });
 
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.5, 1.0), bodyMat);
-            body.position.y = 1.75;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.0, 1.2), bodyMat);
+            body.position.y = 2.0;
 
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.15), eyeMat);
-            eyeL.position.set(-0.3, 3.0, -0.5);
-            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.15), eyeMat);
-            eyeR.position.set(0.3, 3.0, -0.5);
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.18), eyeMat);
+            eyeL.position.set(-0.35, 3.3, -0.6);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.18), eyeMat);
+            eyeR.position.set(0.35, 3.3, -0.6);
 
             monsterGroup.add(body, eyeL, eyeR);
-            monsterGroup.position.set(0, 0, -35);
+            monsterGroup.position.set(0, 0, -50);
             scene.add(monsterGroup);
         }
 
@@ -285,9 +328,9 @@
             const dist = monsterGroup.position.distanceTo(playerGroup.position);
             const dangerOverlay = document.getElementById('danger-overlay');
 
-            if (dist < 18) {
-                dangerOverlay.style.opacity = (1 - dist / 18).toFixed(2);
-                if (performance.now() - lastHeartbeat > dist * 45) {
+            if (dist < 22) {
+                dangerOverlay.style.opacity = (1 - dist / 22).toFixed(2);
+                if (performance.now() - lastHeartbeat > dist * 40) {
                     playSound(65, 'sine', 0.15, 0.35);
                     lastHeartbeat = performance.now();
                 }
@@ -295,8 +338,9 @@
                 dangerOverlay.style.opacity = 0;
             }
 
-            let monsterSpeed = 0.07;
-            if (isSprinting) monsterSpeed = 0.15;
+            // تزداد سرعة الوحش في المستوى الثاني
+            let monsterSpeed = currentLevel === 1 ? 0.08 : 0.12;
+            if (isSprinting) monsterSpeed += 0.08;
 
             const dir = new THREE.Vector3().subVectors(playerGroup.position, monsterGroup.position);
             dir.y = 0;
@@ -304,8 +348,8 @@
 
             monsterGroup.position.add(dir.multiplyScalar(monsterSpeed));
 
-            if (dist < 1.8) {
-                showToast("💀 نالك الوحش!");
+            if (dist < 2.0) {
+                showToast("💀 امسك بك الوحش!");
                 setTimeout(() => location.reload(), 1500);
             }
         }
@@ -318,12 +362,12 @@
             initScene();
 
             playerGroup = new THREE.Group();
-            playerGroup.position.set(0, 1.8, 25);
+            playerGroup.position.set(0, 1.8, 65);
             scene.add(playerGroup);
 
             try { document.body.requestPointerLock(); } catch(e){}
 
-            showToast("⚠️ اتبع الشموع واجمع المفتاح للهروب!");
+            showToast("⚠️ اتبع الشموع المضيئة واجمع المفتاح للانتقال للمستوى التالي!");
             animate();
         }
 
@@ -333,7 +377,6 @@
             const now = performance.now();
             const wantsToRun = keys['shift'] || keys['mousedown'];
 
-            // استهلاك واعادة شحن الطاقة
             if (wantsToRun && stamina > 0 && !isCrouching) {
                 isSprinting = true;
                 stamina = Math.max(0, stamina - 0.35);
@@ -343,7 +386,6 @@
             }
             document.getElementById('stamina-bar').style.width = stamina + '%';
 
-            // استهلاك البطارية
             if (isFlashlightOn && battery > 0) {
                 battery = Math.max(0, battery - 0.02);
                 flashlight.intensity = (battery / 100) * 6;
@@ -352,7 +394,6 @@
             }
             document.getElementById('battery-bar').style.width = battery + '%';
 
-            // فيزياء الحركة
             const moveSpeed = isCrouching ? 0.05 : (isSprinting ? 0.22 : 0.12);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -387,7 +428,6 @@
                 isGrounded = true;
             }
 
-            // تحديث الكاميرا
             camera.fov += ((isSprinting ? 88 : 75) - camera.fov) * 0.1;
             camera.updateProjectionMatrix();
 
