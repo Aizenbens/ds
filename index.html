@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What? - Illuminated Horror Maze</title>
+    <title>From What? - Ultimate Challenge</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #010103; user-select: none; touch-action: none; }
@@ -74,7 +74,7 @@
 
         #stamina-container {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            width: 200px; height: 10px; background: rgba(15, 23, 42, 0.8);
+            width: 220px; height: 10px; background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
             overflow: hidden; pointer-events: none; z-index: 5;
         }
@@ -86,8 +86,15 @@
         #vignette {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 2;
-            box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8);
             transition: box-shadow 0.2s ease;
+        }
+
+        #danger-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 3; opacity: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(220, 38, 38, 0.4) 100%);
+            transition: opacity 0.3s ease;
         }
 
         #win-modal {
@@ -96,7 +103,7 @@
             background: rgba(10, 10, 15, 0.95); padding: 25px;
             border-radius: 20px; color: white; text-align: center;
             border: 2px solid #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
-            z-index: 20; width: 85%; max-width: 340px;
+            z-index: 20; width: 85%; max-width: 360px;
         }
 
         #crosshair {
@@ -129,6 +136,7 @@
 <body>
 
     <div id="vignette"></div>
+    <div id="danger-overlay"></div>
     <div id="crosshair"></div>
 
     <div id="menu">
@@ -193,6 +201,7 @@
         <div class="hud-card">🔑 المفتاح: <span id="hud-key" style="color: #ef4444;">❌</span></div>
         <div class="hud-card">🚩 نقطة الحفظ: <span id="hud-cp" style="color: #ef4444;">لم تُفعل</span></div>
         <div class="hud-card">💰 <span id="hud-coins" style="color: #facc15;">0</span></div>
+        <div class="hud-card">⏱️ <span id="hud-timer" style="color: #38bdf8;">00.0</span>s</div>
         <div class="hud-card">📍 مرحلة: <span id="hud-level" style="color: #facc15;">1</span> / 40</div>
     </div>
 
@@ -206,7 +215,8 @@
 
     <div id="win-modal">
         <h2>🏆 نجوت بنجاح!</h2>
-        <p>تمكنت من الخروج من المتاهة المظلمة!</p>
+        <p id="win-stats">الوقت: 0s</p>
+        <p id="win-reward" style="color: #facc15; font-weight: bold;"></p>
         <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
     </div>
 
@@ -231,7 +241,7 @@
         let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
         let playerGroup, torchLight, torchSpot, ambientLight;
         let monsterGroup = null;
-        let platforms = [], obstacles = [], items = [], checkpoints = [], pressurePlates = [];
+        let platforms = [], obstacles = [], coinItems = [], checkpoints = [], pressurePlates = [];
         let keyMesh = null, doorMesh = null;
         
         let hasKey = false;
@@ -244,6 +254,10 @@
         let currentLevel = savedLevel;
         let isGrounded = false;
         let jumpsLeft = 1;
+
+        let levelStartTime = 0;
+        let levelElapsedTime = 0;
+        let isTimerRunning = false;
 
         let maxStamina = 10.0; 
         let currentStamina = maxStamina;
@@ -258,7 +272,7 @@
         let runSpeed = 0.28;
         let crouchSpeed = 0.08;
         let jumpForce = 0.35;
-        let monsterSpeed = 0.09;
+        let monsterSpeed = 0.12;
         const keys = {};
 
         let pitch = 0, yaw = 0;
@@ -379,14 +393,13 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // زيادة إضاءة الخريطة العامة لترتيب الرؤية وإلغاء الظلمة الشديدة
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
             scene.add(ambientLight);
 
-            torchLight = new THREE.PointLight(0xffaa44, 4.0, 35);
+            torchLight = new THREE.PointLight(0xffaa44, 3.0, 20);
             scene.add(torchLight);
 
-            torchSpot = new THREE.SpotLight(0xffcc66, 6.0, 45, Math.PI / 3.5, 0.4);
+            torchSpot = new THREE.SpotLight(0xffcc66, 4.0, 30, Math.PI / 4, 0.5);
             scene.add(torchSpot);
             scene.add(torchSpot.target);
 
@@ -442,7 +455,7 @@
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
 
-            const mat = new THREE.MeshStandardMaterial({ color: 0x220000, roughness: 0.2, emissive: 0x440000 });
+            const mat = new THREE.MeshStandardMaterial({ color: 0x110000, roughness: 0.1, emissive: 0x660000 });
             const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.4, 1.4), mat); body.position.y = 1.7;
             const head = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), mat); head.position.y = 3.8;
 
@@ -450,21 +463,31 @@
             eyes.position.set(0, 3.9, -0.58);
 
             monsterGroup.add(body, head, eyes);
-            monsterGroup.position.set(0, 0, 20);
+            monsterGroup.position.set(0, 0, 30);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.08 + (currentLevel * 0.001);
+            monsterSpeed = 0.12 + ((currentLevel - 30) * 0.009);
         }
 
-        // إضافة شموع مضيئة على جدران المتاهة لتسهيل الطريق
+        function createCoin(x, y, z) {
+            const coinMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.4, 0.4, 0.08, 16),
+                new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 })
+            );
+            coinMesh.rotation.x = Math.PI / 2;
+            coinMesh.position.set(x, y + 0.8, z);
+            scene.add(coinMesh);
+            coinItems.push({ mesh: coinMesh, pos: { x, y: y + 0.8, z }, collected: false });
+        }
+
         function createCandleOnWall(x, y, z) {
             const torchGroup = new THREE.Group();
             
             const holder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
-            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
             flame.position.y = 0.35;
 
-            const candleLight = new THREE.PointLight(0xffaa22, 2.5, 12);
+            const candleLight = new THREE.PointLight(0xff8811, 1.8, 8);
             candleLight.position.y = 0.4;
 
             torchGroup.add(holder, flame, candleLight);
@@ -516,11 +539,11 @@
         }
 
         function buildMazeLevel(levelNum) {
-            ambientLight.intensity = 0.35;
-            scene.fog = new THREE.FogExp2(0x020308, 0.02);
+            ambientLight.intensity = 0.15;
+            scene.fog = new THREE.FogExp2(0x020308, 0.035);
 
-            const cellSize = 9; // ممرات واسعة جداً لمنع أي تعليق
-            const gridCount = 5 + Math.floor((levelNum - 30) * 0.5);
+            const cellSize = 10;
+            const gridCount = 7 + Math.floor((levelNum - 30) * 0.8);
 
             createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x1e293b);
 
@@ -529,31 +552,33 @@
                     let rx = (r - gridCount / 2) * cellSize + cellSize / 2;
                     let rz = (c - gridCount / 2) * cellSize + cellSize / 2;
 
-                    // حماية نقطة البداية
-                    if (Math.abs(rx) < cellSize * 1.2 && Math.abs(rz) < cellSize * 1.2) continue; 
+                    if (Math.abs(r - Math.floor(gridCount / 2)) <= 1 && Math.abs(c - Math.floor(gridCount / 2)) <= 1) continue; 
 
-                    // بناء جدران أسهل وأقل كثافة
-                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.65) {
-                        createWallOrPlatform(rx, 3, rz, cellSize - 2.0, 6, cellSize - 2.0, 0x0f172a, true);
+                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.35) {
+                        createWallOrPlatform(rx, 3, rz, cellSize - 1.5, 6, cellSize - 1.5, 0x0f172a, true);
                         
-                        // إضافة شمعة مضيئة على بعض الجدران لتسهيل الطريق
-                        if (Math.random() < 0.4) {
-                            createCandleOnWall(rx, 2.5, rz + (cellSize - 2.0)/2 + 0.2);
+                        if (Math.random() < 0.25) {
+                            createCandleOnWall(rx, 2.5, rz + (cellSize - 1.5)/2 + 0.2);
                         }
                     }
                 }
             }
 
             createCheckpoint(0, 0, 0);
-            createPressurePlate(cellSize, 0, cellSize);
+            createPressurePlate(cellSize * 2.5, 0, cellSize * 2.5);
 
-            // المفتاح والباب
+            // زيادة صعوبة المفتاح بوضعه في زاوية معقدة بعيدة
             keyMesh = new THREE.Mesh(
                 new THREE.TorusGeometry(0.5, 0.12, 8, 16),
                 new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04 })
             );
-            keyMesh.position.set((gridCount / 2 - 1) * cellSize, 1.2, (gridCount / 2 - 1) * cellSize);
+            const keyX = -(gridCount / 2 - 1) * cellSize;
+            const keyZ = (gridCount / 2 - 1) * cellSize;
+            keyMesh.position.set(keyX, 1.2, keyZ);
             scene.add(keyMesh);
+
+            // عملة جني داخل المتاهة
+            createCoin(keyX + 2, 0, keyZ);
 
             doorMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(cellSize - 2, 6, 0.8),
@@ -565,19 +590,20 @@
             const doorBox = new THREE.Box3().setFromObject(doorMesh);
             obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
 
-            showToast("🕯️ المتاهة مضاءة وأسهل الآن! تتبع الشموع واضغط الزر الأحمر 🔴");
+            showToast("💀 المتاهة معقدة جداً والمفتاح في زاوية مخفية! ابحث جيداً!");
         }
 
+        // تطوير الباركور لجشعه أصعب بشكل ملحوظ
         function buildCaveLevel(levelNum) {
             platforms.forEach(p => scene.remove(p.mesh));
             obstacles.forEach(o => scene.remove(o.mesh));
             checkpoints.forEach(c => scene.remove(c.group));
-            items.forEach(i => scene.remove(i.mesh));
+            coinItems.forEach(ci => scene.remove(ci.mesh));
             pressurePlates.forEach(pp => scene.remove(pp.mesh));
             if (keyMesh) scene.remove(keyMesh);
             if (doorMesh) scene.remove(doorMesh);
 
-            platforms = []; obstacles = []; checkpoints = []; items = []; pressurePlates = [];
+            platforms = []; obstacles = []; checkpoints = []; coinItems = []; pressurePlates = [];
             hasKey = false; platePressed = false; activeCheckpointPos = null;
             document.getElementById('hud-key').textContent = "❌";
             document.getElementById('hud-cp').textContent = "لم تُفعل";
@@ -593,22 +619,25 @@
             ambientLight.intensity = 0.4;
             scene.fog = new THREE.FogExp2(0x020208, 0.015);
 
-            const mapLength = 15 + Math.floor(levelNum * 1.2);
+            const mapLength = 15 + Math.floor(levelNum * 1.5);
             let currentZ = 0, currentY = 0, currentX = 0;
 
             createWallOrPlatform(0, 0, 0, 8, 1.4, 8, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
-                const gapZ = 6.0; 
-                const stepY = (Math.sin(i * 0.5) * 0.8); 
-                const shiftX = (Math.cos(i * 0.6) * 3.5); 
+                // زيادة المسافات لتصعيب القفز بالباركور
+                const gapZ = 6.8 + (levelNum * 0.12); 
+                const stepY = (Math.sin(i * 0.8) * (1.2 + levelNum * 0.03)); 
+                const shiftX = (Math.cos(i * 0.7) * (4.2 + levelNum * 0.1)); 
 
                 currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
-                const pWidth = Math.max(3.8, 5.5 - (levelNum * 0.04));
-                createWallOrPlatform(currentX, currentY, currentZ, pWidth, 1.2, pWidth, 0x1e293b);
+                // تصغير حجم المنصات تدريجياً
+                const pWidth = Math.max(2.2, 5.0 - (levelNum * 0.09));
+                createWallOrPlatform(currentX, currentY, currentZ, pWidth, 1.0, pWidth, 0x1e293b);
 
-                if (i > 0 && i % 6 === 0) createCheckpoint(currentX, currentY + 0.7, currentZ);
+                if (i % 3 === 0) createCoin(currentX, currentY + 0.6, currentZ);
+                if (i > 0 && i % 8 === 0) createCheckpoint(currentX, currentY + 0.7, currentZ);
             }
 
             createWallOrPlatform(currentX, currentY, currentZ - 8, 10, 1.4, 10, 0x1e1b4b);
@@ -636,6 +665,10 @@
 
             buildCaveLevel(currentLevel);
             respawnPlayer();
+
+            levelStartTime = performance.now();
+            isTimerRunning = true;
+
             animate();
         }
 
@@ -657,11 +690,11 @@
             if (activeCheckpointPos) {
                 playerGroup.position.set(activeCheckpointPos.x, activeCheckpointPos.y, activeCheckpointPos.z);
             } else {
-                playerGroup.position.set(0, 2.5, 0);
+                playerGroup.position.set(0, 1.8, 0);
             }
             velocity = { x: 0, y: 0, z: 0 };
             yaw = 0; pitch = 0;
-            if (monsterGroup) monsterGroup.position.set(0, 0, 20);
+            if (monsterGroup) monsterGroup.position.set(0, 0, 30);
         }
 
         function showToast(text) {
@@ -671,8 +704,28 @@
         }
 
         function openWinModal() {
-            confetti({ particleCount: 100, spread: 70 });
+            isTimerRunning = false;
+            confetti({ particleCount: 120, spread: 80 });
             playSound(580, 'sine', 0.4);
+
+            // حساب التوقيت المستهدف والمكافأة (10 ثوانٍ + ثانيتين لكل مستوى)
+            const targetTime = 10 + (currentLevel - 1) * 2;
+            const finishTime = parseFloat(levelElapsedTime.toFixed(1));
+            
+            let rewardMsg = "تم إنهاء المرحلة!";
+            if (finishTime <= targetTime) {
+                const bonusCoins = 10;
+                coinsCount += bonusCoins;
+                localStorage.setItem('fw_coins', coinsCount);
+                document.getElementById('hud-coins').textContent = coinsCount;
+                rewardMsg = `⚡ أداء أسطوري! أنهيت المستوى في أقل من ${targetTime} ثانية وحصلت على +10 عملات! 🎉`;
+            } else {
+                rewardMsg = `الوقت المستهدف للحصول على عملات هو ${targetTime} ثانية. حاول مجدداً لاحقاً!`;
+            }
+
+            document.getElementById('win-stats').textContent = `الوقت المستغرق: ${finishTime} ثانية`;
+            document.getElementById('win-reward').textContent = rewardMsg;
+
             localStorage.setItem('fw_level', Math.min(40, currentLevel + 1));
             document.exitPointerLock();
             document.getElementById('win-modal').style.display = 'block';
@@ -685,6 +738,8 @@
                 document.getElementById('hud-level').textContent = currentLevel;
                 buildCaveLevel(currentLevel);
                 respawnPlayer();
+                levelStartTime = performance.now();
+                isTimerRunning = true;
             } else {
                 document.getElementById('menu').style.display = 'flex';
             }
@@ -695,9 +750,29 @@
             if (isDying) { renderer.render(scene, camera); return; }
 
             const delta = 0.016;
-            const time = Date.now() * 0.003;
 
-            // تحديث الجري
+            // تحديث الوقت المنقضي
+            if (isTimerRunning) {
+                levelElapsedTime = (performance.now() - levelStartTime) / 1000;
+                document.getElementById('hud-timer').textContent = levelElapsedTime.toFixed(1);
+            }
+
+            // حركة العملات وتدويرها وتجميعها
+            for (let ci of coinItems) {
+                if (!ci.collected) {
+                    ci.mesh.rotation.z += 0.04;
+                    if (playerGroup.position.distanceTo(new THREE.Vector3(ci.pos.x, ci.pos.y, ci.pos.z)) < 1.2) {
+                        ci.collected = true;
+                        scene.remove(ci.mesh);
+                        coinsCount += 1;
+                        localStorage.setItem('fw_coins', coinsCount);
+                        document.getElementById('hud-coins').textContent = coinsCount;
+                        playSound(900, 'sine', 0.15);
+                        showToast("💰 جمعت عملة ذهبية!");
+                    }
+                }
+            }
+
             const wantsToRun = keys['shift'] || keys['shiftleft'];
             if (wantsToRun && !staminaExhausted && !isCrouching) {
                 isSprinting = true;
@@ -715,7 +790,6 @@
             }
             document.getElementById('stamina-bar').style.width = `${(currentStamina / maxStamina) * 100}%`;
 
-            // الأزرار الأرضية (Pressure Plates)
             for (let pp of pressurePlates) {
                 if (!pp.pressed && playerGroup.position.distanceTo(new THREE.Vector3(pp.pos.x, pp.pos.y, pp.pos.z)) < 1.6) {
                     pp.pressed = true;
@@ -726,10 +800,16 @@
                 }
             }
 
-            // حركة الوحش المطارد
             if (monsterGroup && playerGroup) {
                 const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
                 
+                const dangerOverlay = document.getElementById('danger-overlay');
+                if (distToMonster < 15) {
+                    dangerOverlay.style.opacity = (1 - distToMonster / 15).toFixed(2);
+                } else {
+                    dangerOverlay.style.opacity = "0";
+                }
+
                 let dirX = playerGroup.position.x - monsterGroup.position.x;
                 let dirZ = playerGroup.position.z - monsterGroup.position.z;
                 let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
@@ -746,7 +826,6 @@
                 }
             }
 
-            // نقاط الحفظ
             for (let cp of checkpoints) {
                 if (!cp.activated && playerGroup.position.distanceTo(new THREE.Vector3(cp.pos.x, cp.pos.y, cp.pos.z)) < 2.0) {
                     cp.activated = true;
@@ -760,7 +839,6 @@
                 }
             }
 
-            // المفتاح
             if (keyMesh && playerGroup.position.distanceTo(keyMesh.position) < 2.0 && !hasKey) {
                 if (currentLevel > 30 && !platePressed) {
                     showToast("⚠️ يجب تفعيل الزر الأرضي أولاً!");
@@ -774,7 +852,6 @@
                 }
             }
 
-            // 🎯 حل اتجاهات الحركة الجذري (مباشرة عبر متجهات الكاميرا)
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
             forward.y = 0; forward.normalize();
@@ -794,7 +871,6 @@
             velocity.z += (moveVector.z - velocity.z) * 0.3;
             velocity.y -= gravity;
 
-            // فيزياء الانزلاق والتحرك لمنع الالتصاق بالحوائط
             let oldX = playerGroup.position.x;
             let oldY = playerGroup.position.y;
             let oldZ = playerGroup.position.z;
@@ -834,7 +910,6 @@
 
             playerGroup.position.set(tempX, tempY, tempZ);
 
-            // الكاميرا
             const eyeHeight = isCrouching ? 0.8 : 1.5;
             camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight, playerGroup.position.z);
 
