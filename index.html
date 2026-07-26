@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What? - Ultimate Horror Experience</title>
+    <title>From What? - Illuminated Horror Experience</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #000; user-select: none; touch-action: none; }
@@ -19,7 +19,7 @@
             backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 12px;
         }
 
-        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 20px #991b1b; font-size: 28px; font-weight: 900; letter-spacing: 1px; }
+        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 20px #991b1b; font-size: 26px; font-weight: 900; }
         
         .preview-container {
             width: 100%; height: 130px; background: #030408; border-radius: 12px;
@@ -83,13 +83,6 @@
             transition: width 0.1s linear;
         }
 
-        #vignette {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 2;
-            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.95);
-            transition: box-shadow 0.2s ease;
-        }
-
         #danger-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 3; opacity: 0;
@@ -115,7 +108,7 @@
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
             transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
-            border: 2px solid rgba(255,255,255,0.5); border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.6); border-radius: 50%;
         }
 
         #toast-msg {
@@ -141,7 +134,6 @@
 </head>
 <body>
 
-    <div id="vignette"></div>
     <div id="danger-overlay"></div>
     <div id="jumpscare-flash"></div>
     <div id="crosshair"></div>
@@ -250,7 +242,7 @@
         let monsterGroup = null;
         let platforms = [], obstacles = [], coinItems = [], checkpoints = [], pressurePlates = [];
         let keyMesh = null, doorMesh = null;
-        let deathParticles = []; // مكعبات التفكك عند الموت
+        let deathParticles = [];
         
         let hasKey = false;
         let platePressed = false;
@@ -283,13 +275,12 @@
         let runSpeed = 0.28;
         let crouchSpeed = 0.08;
         let jumpForce = 0.35;
-        let monsterSpeed = 0.13;
+        let monsterSpeed = 0.11;
         const keys = {};
 
         let pitch = 0, yaw = 0;
         const playerRadius = 0.25;
 
-        // تهيئة النظام الصوتي
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -418,7 +409,7 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x010204);
+            scene.background = new THREE.Color(0x0a0d14);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
             
@@ -427,19 +418,23 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+            // زيادة الإضاءة المحيطة لتجنب الظلام الشديد
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
             scene.add(ambientLight);
 
-            torchLight = new THREE.PointLight(0xff8833, 2.5, 18);
+            torchLight = new THREE.PointLight(0xffaa55, 3.5, 25);
             scene.add(torchLight);
 
-            torchSpot = new THREE.SpotLight(0xffcc66, 3.5, 28, Math.PI / 4, 0.5);
+            torchSpot = new THREE.SpotLight(0xffeeaa, 4.5, 35, Math.PI / 3, 0.4);
             scene.add(torchSpot);
             scene.add(torchSpot.target);
 
+            // إصلاح خطأ Pointer Lock لمنع المشاكل في Console
             document.body.addEventListener('click', () => {
                 if (document.pointerLockElement !== document.body) {
-                    document.body.requestPointerLock();
+                    try {
+                        document.body.requestPointerLock();
+                    } catch(e){}
                 }
             });
 
@@ -485,38 +480,32 @@
             }
         }
 
-        // إنشاء وحش الرعب ثلاثي الأبعاد بأطراف طويلة وحركة مخيفة
         function createChasingMonster() {
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
 
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, emissive: 0x110000 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, emissive: 0x220000 });
             const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-            // هيكل وحشي مجوف
             const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.8, 1.2), darkMat); body.position.y = 2.0;
             const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), darkMat); head.position.y = 4.3;
 
-            // أذرع طويلة جداً
             const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armL.position.set(-1.1, 2.2, 0);
             const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), darkMat); armR.position.set(1.1, 2.2, 0);
 
-            // عيون حمراء مشعة
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat); eyeL.position.set(-0.3, 4.4, -0.6);
-            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat); eyeR.position.set(0.3, 4.4, -0.6);
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat); eyeL.position.set(-0.3, 4.4, -0.6);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat); eyeR.position.set(0.3, 4.4, -0.6);
 
-            // ضوء أحمر خفيف يحيط بالوحش
-            const monsterLight = new THREE.PointLight(0xff0000, 2.0, 8);
+            const monsterLight = new THREE.PointLight(0xff0000, 3.0, 10);
             monsterLight.position.set(0, 3.0, 0);
 
             monsterGroup.add(body, head, armL, armR, eyeL, eyeR, monsterLight);
-            monsterGroup.position.set(0, 0, 30);
+            monsterGroup.position.set(0, 0, 25);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.125 + ((currentLevel - 30) * 0.009);
+            monsterSpeed = 0.11 + ((currentLevel - 30) * 0.005);
         }
 
-        // أنيميشن تفكك وتناثر المكعبات عند الموت أو السقوط
         function spawnFractureExplosion(pos) {
             const cubeCount = 28;
             for (let i = 0; i < cubeCount; i++) {
@@ -557,14 +546,15 @@
             coinItems.push({ mesh: coinMesh, pos: { x, y: y + 0.8, z }, collected: false });
         }
 
+        // إضافة الشموع والمشاعل لإضاءة المتاهة وتسهيل الطريق
         function createCandleOnWall(x, y, z) {
             const torchGroup = new THREE.Group();
             
-            const holder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
-            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+            const holder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x854d0e }));
+            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
             flame.position.y = 0.35;
 
-            const candleLight = new THREE.PointLight(0xff8811, 1.8, 8);
+            const candleLight = new THREE.PointLight(0xffaa22, 2.5, 12);
             candleLight.position.y = 0.4;
 
             torchGroup.add(holder, flame, candleLight);
@@ -575,7 +565,7 @@
         function createWallOrPlatform(x, y, z, w, h, d, colorHex, isWall = false) {
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(w, h, d),
-                new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 })
+                new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 })
             );
             mesh.position.set(x, y, z);
             scene.add(mesh);
@@ -616,13 +606,13 @@
         }
 
         function buildMazeLevel(levelNum) {
-            ambientLight.intensity = 0.12;
-            scene.fog = new THREE.FogExp2(0x010204, 0.04);
+            ambientLight.intensity = 0.35; // إضاءة أفضل في المتاهة
+            scene.fog = new THREE.FogExp2(0x0a0d14, 0.015);
 
-            const cellSize = 10;
-            const gridCount = 7 + Math.floor((levelNum - 30) * 0.8);
+            const cellSize = 8;
+            const gridCount = 5 + Math.floor((levelNum - 30) * 0.4); // متاهة أبسط وأصغر
 
-            createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x1e293b);
+            createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x334155);
 
             for (let r = 0; r < gridCount; r++) {
                 for (let c = 0; c < gridCount; c++) {
@@ -631,18 +621,19 @@
 
                     if (Math.abs(r - Math.floor(gridCount / 2)) <= 1 && Math.abs(c - Math.floor(gridCount / 2)) <= 1) continue; 
 
-                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.35) {
-                        createWallOrPlatform(rx, 3, rz, cellSize - 1.5, 6, cellSize - 1.5, 0x0f172a, true);
+                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.45) {
+                        createWallOrPlatform(rx, 3, rz, cellSize - 1.5, 6, cellSize - 1.5, 0x1e293b, true);
                         
-                        if (Math.random() < 0.25) {
-                            createCandleOnWall(rx, 2.5, rz + (cellSize - 1.5)/2 + 0.2);
+                        // إضافة شموع على الجدران
+                        if (Math.random() < 0.35) {
+                            createCandleOnWall(rx, 2.5, rz + (cellSize - 1.5)/2 + 0.1);
                         }
                     }
                 }
             }
 
             createCheckpoint(0, 0, 0);
-            createPressurePlate(cellSize * 2.5, 0, cellSize * 2.5);
+            createPressurePlate(cellSize * 1.5, 0, cellSize * 1.5);
 
             keyMesh = new THREE.Mesh(
                 new THREE.TorusGeometry(0.5, 0.12, 8, 16),
@@ -665,7 +656,7 @@
             const doorBox = new THREE.Box3().setFromObject(doorMesh);
             obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
 
-            showToast("💀 المتاهة مظلمة ومعقدة! تجنب الوحش واعثر على المفتاح!");
+            showToast("🕯️ اتبّع الشموع المضيئة للوصول إلى المفتاح والهروب!");
         }
 
         function buildCaveLevel(levelNum) {
@@ -690,8 +681,8 @@
                 return;
             }
 
-            ambientLight.intensity = 0.3;
-            scene.fog = new THREE.FogExp2(0x010204, 0.018);
+            ambientLight.intensity = 0.45;
+            scene.fog = new THREE.FogExp2(0x0a0d14, 0.012);
 
             const mapLength = 15 + Math.floor(levelNum * 1.5);
             let currentZ = 0, currentY = 0, currentX = 0;
@@ -744,7 +735,6 @@
             animate();
         }
 
-        // تحسين الرعب وأنيميشن التفكك عند الموت
         function triggerDeathAnimation() {
             if (isDying) return;
             isDying = true;
@@ -754,12 +744,10 @@
 
             playJumpscareSound();
 
-            // فلاش أحمر سريع
             const flash = document.getElementById('jumpscare-flash');
             flash.style.opacity = '0.9';
             setTimeout(() => flash.style.opacity = '0', 150);
 
-            // إطلاق انفجار المكعبات والمتناثرات
             spawnFractureExplosion(playerGroup.position);
             
             setTimeout(() => {
@@ -776,7 +764,7 @@
             }
             velocity = { x: 0, y: 0, z: 0 };
             yaw = 0; pitch = 0;
-            if (monsterGroup) monsterGroup.position.set(0, 0, 30);
+            if (monsterGroup) monsterGroup.position.set(0, 0, 25);
         }
 
         function showToast(text) {
@@ -808,7 +796,7 @@
             document.getElementById('win-reward').textContent = rewardMsg;
 
             localStorage.setItem('fw_level', Math.min(40, currentLevel + 1));
-            document.exitPointerLock();
+            if (document.pointerLockElement) document.exitPointerLock();
             document.getElementById('win-modal').style.display = 'block';
         }
 
@@ -829,11 +817,10 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // تحديث حركة مكعبات التفكك في الهواء عند الموت
             for (let i = deathParticles.length - 1; i >= 0; i--) {
                 let p = deathParticles[i];
                 p.mesh.position.add(p.vel);
-                p.vel.y -= 0.012; // جاذبية المكعبات المتناثرة
+                p.vel.y -= 0.012;
                 p.life -= 0.025;
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
@@ -851,7 +838,6 @@
                 document.getElementById('hud-timer').textContent = levelElapsedTime.toFixed(1);
             }
 
-            // حركة وتدوير العملات
             for (let ci of coinItems) {
                 if (!ci.collected) {
                     ci.mesh.rotation.z += 0.04;
@@ -894,17 +880,15 @@
                 }
             }
 
-            // ذكاء اصطناعي ومطاردة الوحش المرعبة مع مؤثرات الصوت ونبضات القلب
             if (monsterGroup && playerGroup) {
                 const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
                 
-                // نبضات خوف حمراء وتسارع صوت نبض القلب عند الاقتراب
                 const dangerOverlay = document.getElementById('danger-overlay');
                 if (distToMonster < 18) {
                     const intensity = (1 - distToMonster / 18);
                     dangerOverlay.style.opacity = intensity.toFixed(2);
 
-                    const heartbeatDelay = 300 + (distToMonster * 40); // يسرع الصوت كلما اقترب
+                    const heartbeatDelay = 300 + (distToMonster * 40);
                     if (now - lastHeartbeatTime > heartbeatDelay) {
                         playHeartbeat();
                         lastHeartbeatTime = now;
@@ -913,7 +897,6 @@
                     dangerOverlay.style.opacity = "0";
                 }
 
-                // حركة المطاردة للوحش مع ارتعاش مخيف
                 let dirX = playerGroup.position.x - monsterGroup.position.x;
                 let dirZ = playerGroup.position.z - monsterGroup.position.z;
                 let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
@@ -922,7 +905,7 @@
                     monsterGroup.position.x += (dirX / len) * monsterSpeed;
                     monsterGroup.position.z += (dirZ / len) * monsterSpeed;
                 }
-                monsterGroup.position.y = playerGroup.position.y - 0.2 + (Math.sin(now * 0.01) * 0.1); // ارتعاش حركي
+                monsterGroup.position.y = playerGroup.position.y - 0.2 + (Math.sin(now * 0.01) * 0.1);
 
                 if (distToMonster < 1.6) {
                     showToast("💀 الإمساك بك بواسطة الوحش!");
@@ -971,7 +954,6 @@
 
             if (moveVector.lengthSq() > 0) {
                 moveVector.normalize().multiplyScalar(moveSpeed);
-                // اصوات خطوات أثناء الحركة
                 if (isGrounded && now - lastFootstepTime > (isSprinting ? 260 : 400)) {
                     playSound(150, 'triangle', 0.05, 0.04);
                     lastFootstepTime = now;
@@ -1021,7 +1003,6 @@
 
             playerGroup.position.set(tempX, tempY, tempZ);
 
-            // اهتزاز الكاميرا (Head Bobbing) أثناء المشي/الجري
             let headBob = 0;
             if (isGrounded && moveVector.lengthSq() > 0) {
                 headBob = Math.sin(now * (isSprinting ? 0.018 : 0.01)) * (isSprinting ? 0.08 : 0.04);
@@ -1030,10 +1011,9 @@
             const eyeHeight = isCrouching ? 0.8 : 1.5;
             camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight + headBob, playerGroup.position.z);
 
-            // تذبذب الضوء الإضافي (Flickering Flashlight Effect)
             if (torchLight && torchSpot) {
                 const flicker = (Math.random() - 0.5) * 0.2;
-                torchLight.intensity = 2.5 + flicker;
+                torchLight.intensity = 3.5 + flicker;
                 torchLight.position.set(camera.position.x, camera.position.y - 0.2, camera.position.z);
                 torchSpot.position.copy(camera.position);
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
