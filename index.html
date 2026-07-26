@@ -3,77 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مغامرة المغارة - المطاردة والباركور 4D</title>
+    <title>الهروب من المغارة - الباركور والمطاردة</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { margin: 0; overflow: hidden; background: #020617; user-select: none; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #020208; user-select: none; touch-action: none; }
         
         #menu {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.95); padding: 15px;
-            border-radius: 20px; color: #f8fafc; text-align: center;
-            box-shadow: 0 0 35px rgba(239, 68, 68, 0.4);
-            border: 2px solid rgba(239, 68, 68, 0.5);
-            z-index: 10; width: 92%; max-width: 480px; max-height: 95vh; overflow-y: auto;
-            backdrop-filter: blur(12px); display: flex; flex-direction: column; gap: 10px;
+            background: rgba(15, 23, 42, 0.95); padding: 20px;
+            border-radius: 24px; color: #f8fafc; text-align: center;
+            box-shadow: 0 0 40px rgba(220, 38, 38, 0.5);
+            border: 2px solid rgba(220, 38, 38, 0.6);
+            z-index: 10; width: 92%; max-width: 440px; max-height: 95vh; overflow-y: auto;
+            backdrop-filter: blur(16px); display: flex; flex-direction: column; gap: 12px;
         }
 
-        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 10px #b91c1c; font-size: 20px; }
+        #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 12px #991b1b; font-size: 22px; font-weight: 800; }
         
         .preview-container {
-            width: 100%; height: 160px; background: #090d16; border-radius: 12px;
-            border: 1px solid #334155; position: relative; overflow: hidden;
+            width: 100%; height: 180px; background: #05070f; border-radius: 16px;
+            border: 1px solid #1e293b; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
         }
 
         .form-group { text-align: right; }
-        .form-group label { display: block; margin-bottom: 2px; font-weight: 600; color: #94a3b8; font-size: 11px; }
+        .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #94a3b8; font-size: 12px; }
         .form-group input, .form-group select {
-            width: 100%; padding: 6px; border-radius: 8px; border: 1px solid #334155;
-            background: #0f172a; color: white; font-size: 12px; outline: none;
+            width: 100%; padding: 8px; border-radius: 10px; border: 1px solid #334155;
+            background: #0f172a; color: white; font-size: 13px; outline: none;
         }
 
-        .color-row { display: flex; gap: 6px; }
+        .color-row { display: flex; gap: 8px; }
         .color-row div { flex: 1; }
 
         button.btn-main {
-            background: linear-gradient(135deg, #dc2626, #991b1b);
-            color: white; border: none; padding: 10px; border-radius: 8px;
-            font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+            background: linear-gradient(135deg, #ef4444, #991b1b);
+            color: white; border: none; padding: 12px; border-radius: 12px;
+            font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
         }
+        button.btn-main:hover { transform: scale(1.02); background: linear-gradient(135deg, #f87171, #dc2626); }
 
         #hud {
-            position: absolute; top: 10px; right: 10px; left: 10px;
+            position: absolute; top: 12px; right: 12px; left: 12px;
             display: flex; justify-content: space-between; pointer-events: none;
-            color: white; font-size: 11px; font-weight: bold; z-index: 5; flex-wrap: wrap; gap: 6px;
+            color: white; font-size: 12px; font-weight: bold; z-index: 5; flex-wrap: wrap; gap: 8px;
         }
 
         .hud-card {
-            background: rgba(15, 23, 42, 0.85); padding: 5px 10px;
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
-            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 5px;
+            background: rgba(15, 23, 42, 0.85); padding: 6px 12px;
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 6px;
         }
 
         #action-btn-container {
             position: absolute; bottom: 15px; left: 15px; z-index: 6;
-            display: flex; gap: 6px; flex-wrap: wrap;
+            display: flex; gap: 8px;
         }
 
         .action-btn {
             background: rgba(15, 23, 42, 0.9); border: 2px solid #ef4444;
-            color: white; padding: 8px 12px; border-radius: 10px;
-            font-size: 12px; font-weight: bold; cursor: pointer;
+            color: white; padding: 10px 16px; border-radius: 12px;
+            font-size: 13px; font-weight: bold; cursor: pointer; backdrop-filter: blur(8px);
         }
 
         #touch-controls {
             display: none; position: absolute; bottom: 20px; right: 20px; z-index: 6;
-            gap: 10px; flex-direction: column;
+            gap: 12px; flex-direction: column;
         }
         .touch-btn {
-            width: 55px; height: 55px; border-radius: 50%; background: rgba(239, 68, 68, 0.4);
-            border: 2px solid #ef4444; color: white; font-size: 20px; font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.5);
+            border: 2px solid #ef4444; color: white; font-size: 22px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px);
         }
 
         #win-modal {
@@ -82,15 +84,15 @@
             background: rgba(15, 23, 42, 0.95); padding: 25px;
             border-radius: 20px; color: white; text-align: center;
             border: 2px solid #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
-            z-index: 20; width: 85%; max-width: 320px;
+            z-index: 20; width: 85%; max-width: 340px;
         }
 
         #toast-msg {
-            position: absolute; top: 12%; left: 50%; transform: translate(-50%, -50%);
+            position: absolute; top: 10%; left: 50%; transform: translate(-50%, -50%);
             color: #ef4444; font-size: 13px; font-weight: bold; opacity: 0;
             transition: opacity 0.3s ease; pointer-events: none;
-            background: rgba(15, 23, 42, 0.95); padding: 8px 16px; border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.2); z-index: 6; text-align: center;
+            background: rgba(15, 23, 42, 0.95); padding: 8px 18px; border-radius: 10px;
+            border: 1px solid rgba(239, 68, 68, 0.5); z-index: 6; text-align: center;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -99,14 +101,14 @@
 <body>
 
     <div id="menu">
-        <h1>🌋 مغامرة المغارة والمطاردة</h1>
+        <h1>🌋 الهروب من مغارة الموت</h1>
         
         <div class="preview-container" id="shop-preview"></div>
 
         <div class="color-row">
             <div class="form-group">
                 <label>القميص:</label>
-                <input type="color" id="shirt-color-input" value="#dc2626" onchange="updateShopPreview()">
+                <input type="color" id="shirt-color-input" value="#ef4444" onchange="updateShopPreview()">
             </div>
             <div class="form-group">
                 <label>السروال:</label>
@@ -133,14 +135,14 @@
             </div>
         </div>
 
-        <button class="btn-main" onclick="startGame()">الهروب من الوحش 🏃‍♂️🔥</button>
+        <button class="btn-main" onclick="startGame()">ابدأ الهروب الآن 🏃‍♂️🔥</button>
     </div>
 
     <div id="hud">
         <div class="hud-card">💰 <span id="hud-coins" style="color: #facc15;">0</span></div>
         <div class="hud-card">🔑 <span id="hud-key1" style="color: #ef4444;">❌</span></div>
         <div class="hud-card">💀 <span id="hud-deaths" style="color: #ef4444;">0</span></div>
-        <div class="hud-card">🚩 شيكبوينت: <span id="hud-cp" style="color: #38bdf8;">بداية</span></div>
+        <div class="hud-card">🚩 نقطة حفظ: <span id="hud-cp" style="color: #38bdf8;">بداية</span></div>
         <div class="hud-card">📍 مرحلة: <span id="hud-level" style="color: #facc15;">1</span> / 30</div>
     </div>
 
@@ -153,8 +155,8 @@
     </div>
 
     <div id="win-modal">
-        <h2>🏆 هربت من الوحش بنجاح!</h2>
-        <p>عبرت المغارة بأمان!</p>
+        <h2>🏆 هربت من المغارة بنجاح!</h2>
+        <p>نجوت من الوحش وعبرت الفخاخ!</p>
         <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
     </div>
 
@@ -175,7 +177,7 @@
         let scene, camera, renderer;
         let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
         let playerGroup, leftArm, rightArm, leftLeg, rightLeg, headMesh, torsoMesh;
-        let monsterGroup = null;
+        let monsterGroup = null, monsterLeftArm, monsterRightArm;
         let portalRingMesh = null;
         let platforms = [], traps = [], coinsArr = [], particlesArr = [], checkpoints = [];
         let key1Obj = null, roomDoorObj = null;
@@ -185,19 +187,22 @@
         let isDying = false;
         
         let currentLevel = savedLevel;
-        let isGrounded = false, isOnIce = false;
+        let isGrounded = false;
         let jumpsLeft = 2; const maxJumps = 2;
         let canDash = true, isDashing = false;
 
         let audioCtx = null;
         let animTime = 0;
-        const gravity = 0.014;
+        const gravity = 0.015;
         let velocity = { x: 0, y: 0, z: 0 };
         let targetVelocity = { x: 0, z: 0 };
-        let baseSpeed = 0.24;
+        let baseSpeed = 0.25;
         let jumpForce = 0.38;
         let monsterSpeed = 0.15;
         const keys = {};
+
+        // أبعاد اللاعب الفيزيائية للتصادم (Box Collider)
+        const playerSize = { w: 0.8, h: 1.8, d: 0.6 };
 
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -223,10 +228,10 @@
         function initShopPreview() {
             const container = document.getElementById('shop-preview');
             previewScene = new THREE.Scene();
-            previewScene.background = new THREE.Color(0x090d16);
+            previewScene.background = new THREE.Color(0x05070f);
 
             previewCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-            previewCamera.position.set(0, 1.2, 3.2);
+            previewCamera.position.set(0, 1.2, 3.5);
 
             previewRenderer = new THREE.WebGLRenderer({ antialias: true });
             previewRenderer.setSize(container.clientWidth, container.clientHeight);
@@ -241,6 +246,58 @@
             animateShopPreview();
         }
 
+        function buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle) {
+            const group = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.4 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.5 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+
+            // الرأس والعيون
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat); 
+            head.position.y = 1.45;
+            
+            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.05), eyeMat);
+            eye1.position.set(-0.18, 1.5, -0.36);
+            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.05), eyeMat);
+            eye2.position.set(0.18, 1.5, -0.36);
+
+            // الشعر والقبعة
+            let hairMesh;
+            if (hairStyle === 'spiky') {
+                hairMesh = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.4, 5), hairMat);
+                hairMesh.position.set(0, 1.95, 0);
+            } else if (hairStyle === 'cap') {
+                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.9), hairMat);
+                hairMesh.position.set(0, 1.82, -0.05);
+            } else {
+                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.2, 0.75), hairMat);
+                hairMesh.position.set(0, 1.82, 0);
+            }
+
+            // الجذع
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.45), shirtMat); 
+            torso.position.y = 0.65;
+
+            // الأذرع
+            const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.85, 0.28), skinMat); 
+            lArm.geometry.translate(0, -0.35, 0); lArm.position.set(-0.56, 1.05, 0);
+
+            const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.85, 0.28), skinMat); 
+            rArm.geometry.translate(0, -0.35, 0); rArm.position.set(0.56, 1.05, 0);
+
+            // الأرجل
+            const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.34), pantsMat); 
+            lLeg.geometry.translate(0, -0.35, 0); lLeg.position.set(-0.2, 0.2, 0);
+
+            const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.34), pantsMat); 
+            rLeg.geometry.translate(0, -0.35, 0); rLeg.position.set(0.2, 0.2, 0);
+
+            group.add(head, eye1, eye2, hairMesh, torso, lArm, rArm, lLeg, rLeg);
+            return { group, head, torso, lArm, rArm, lLeg, rLeg };
+        }
+
         function updateShopPreview() {
             if (previewPlayerGroup) previewScene.remove(previewPlayerGroup);
 
@@ -249,28 +306,8 @@
             const hairColor = document.getElementById('hair-color-input').value;
             const hairStyle = document.getElementById('hair-style-select').value;
 
-            previewPlayerGroup = new THREE.Group();
-
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor });
-            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor });
-
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat); head.position.y = 1.3;
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.4), shirtMat); torso.position.y = 0.5;
-            const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), pantsMat); leg1.position.set(-0.2, -0.35, 0);
-            const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.35), pantsMat); leg2.position.set(0.2, -0.35, 0);
-
-            let hairMesh;
-            if (hairStyle === 'spiky') {
-                hairMesh = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.4, 5), hairMat);
-                hairMesh.position.set(0, 1.8, 0);
-            } else {
-                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.2, 0.75), hairMat);
-                hairMesh.position.set(0, 1.7, 0);
-            }
-
-            previewPlayerGroup.add(head, torso, leg1, leg2, hairMesh);
+            const res = buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle);
+            previewPlayerGroup = res.group;
             previewScene.add(previewPlayerGroup);
         }
 
@@ -283,7 +320,7 @@
         function initScene() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020208);
-            scene.fog = new THREE.FogExp2(0x020208, 0.015);
+            scene.fog = new THREE.FogExp2(0x020208, 0.018);
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
             
@@ -293,10 +330,10 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xff4444, 0.4);
+            const ambientLight = new THREE.AmbientLight(0xff4444, 0.5);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+            const dirLight = new THREE.DirectionalLight(0xf87171, 1.2);
             dirLight.position.set(20, 50, 20);
             dirLight.castShadow = true;
             scene.add(dirLight);
@@ -320,12 +357,12 @@
         }
 
         function createCaveEnvironment() {
-            // صواعد ونوازل صخرية لإعطاء طابع المغارة
-            for(let i=0; i<60; i++) {
-                const geo = new THREE.ConeGeometry(1.5, 8 + Math.random()*8, 5);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+            // إضافة صواعد ونوازل صخرية ثقيلة
+            for(let i=0; i<80; i++) {
+                const geo = new THREE.ConeGeometry(1.8, 10 + Math.random()*10, 6);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
                 const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set((Math.random()-0.5)*80, 20, -i*8);
+                mesh.position.set((Math.random()-0.5)*90, 22, -i*7);
                 mesh.rotation.x = Math.PI;
                 scene.add(mesh);
             }
@@ -344,100 +381,73 @@
 
         function createCustomPlayer() {
             if (playerGroup) scene.remove(playerGroup);
-            playerGroup = new THREE.Group();
 
             const shirtColor = document.getElementById('shirt-color-input').value;
             const pantsColor = document.getElementById('pants-color-input').value;
             const hairColor = document.getElementById('hair-color-input').value;
             const hairStyle = document.getElementById('hair-style-select').value;
 
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.5 });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.4 });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.5 });
-            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 });
+            const res = buildPlayerMesh(shirtColor, pantsColor, hairColor, hairStyle);
+            playerGroup = res.group;
+            leftArm = res.lArm; rightArm = res.rArm;
+            leftLeg = res.lLeg; rightLeg = res.rLeg;
+            headMesh = res.head; torsoMesh = res.torso;
 
-            headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), skinMat);
-            headMesh.position.y = 1.5; headMesh.castShadow = true;
-
-            let hairMesh;
-            if (hairStyle === 'spiky') {
-                hairMesh = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.5, 5), hairMat);
-                hairMesh.position.set(0, 2.1, 0);
-            } else {
-                hairMesh = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.25, 0.86), hairMat);
-                hairMesh.position.set(0, 1.95, 0);
-            }
-
-            torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat); 
-            torsoMesh.position.y = 0.6; torsoMesh.castShadow = true;
-
-            leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
-            leftArm.geometry.translate(0, -0.35, 0); leftArm.position.set(-0.62, 1.0, 0);
-
-            rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.9, 0.32), skinMat); 
-            rightArm.geometry.translate(0, -0.35, 0); rightArm.position.set(0.62, 1.0, 0);
-
-            leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
-            leftLeg.geometry.translate(0, -0.35, 0); leftLeg.position.set(-0.22, 0.1, 0);
-
-            rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.9, 0.38), pantsMat); 
-            rightLeg.geometry.translate(0, -0.35, 0); rightLeg.position.set(0.22, 0.1, 0);
-
-            playerGroup.add(headMesh, hairMesh, torsoMesh, leftArm, rightArm, leftLeg, rightLeg);
             scene.add(playerGroup);
         }
 
-        // إنشاء وحش المطاردة المضيء باللون الأحمر
+        // إنشاء وحش مغارة مرعب ومفصل
         function createChasingMonster() {
             if (monsterGroup) scene.remove(monsterGroup);
             monsterGroup = new THREE.Group();
 
-            const mat = new THREE.MeshStandardMaterial({ color: 0x990000, roughness: 0.2, emissive: 0x550000 });
+            const mat = new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.3, emissive: 0x280000 });
             const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.5, 1.8), mat);
-            body.position.y = 1.75;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.8, 1.8), mat); body.position.y = 1.9;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 1.4), mat); head.position.y = 4.2;
 
-            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.1), eyeMat);
-            eye1.position.set(-0.6, 2.5, -0.95);
-            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.1), eyeMat);
-            eye2.position.set(0.6, 2.5, -0.95);
+            const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.1), eyeMat); eye1.position.set(-0.45, 4.3, -0.72);
+            const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.1), eyeMat); eye2.position.set(0.45, 4.3, -0.72);
 
-            monsterGroup.add(body, eye1, eye2);
+            monsterLeftArm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), mat);
+            monsterLeftArm.geometry.translate(0, -1.2, 0); monsterLeftArm.position.set(-1.5, 3.5, 0);
+
+            monsterRightArm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), mat);
+            monsterRightArm.geometry.translate(0, -1.2, 0); monsterRightArm.position.set(1.5, 3.5, 0);
+
+            monsterGroup.add(body, head, eye1, eye2, monsterLeftArm, monsterRightArm);
             monsterGroup.position.set(0, 0, 12);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.14 + (currentLevel * 0.005);
+            monsterSpeed = 0.15 + (currentLevel * 0.004);
         }
 
         function createCheckpoint(x, y, z) {
             const group = new THREE.Group();
             group.position.set(x, y, z);
 
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 8), new THREE.MeshStandardMaterial({ color: 0x64748b }));
-            pole.position.y = 1.5;
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+            pole.position.y = 1.6;
 
-            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            flag.position.set(0.4, 2.7, 0);
-            flag.name = "flagMesh";
+            const flag = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            flag.position.set(0.5, 2.8, 0); flag.name = "flagMesh";
 
-            group.add(pole, flag);
-            scene.add(group);
-
-            checkpoints.push({ group, pos: { x, y: y + 1, z }, active: false });
+            group.add(pole, flag); scene.add(group);
+            checkpoints.push({ group, pos: { x, y: y + 1.2, z }, active: false });
         }
 
         function createStylizedPlatform(x, y, z, w, h, d, colorHex, type = 'normal') {
             const group = new THREE.Group();
 
-            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
             const mainMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mainMat);
             mainMesh.receiveShadow = true; mainMesh.castShadow = true;
             group.add(mainMesh);
 
             const borderMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-            const topBorder = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.1, d + 0.1), borderMat);
-            topBorder.position.y = h / 2 + 0.05;
+            const topBorder = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 0.12, d + 0.1), borderMat);
+            topBorder.position.y = h / 2 + 0.06;
             group.add(topBorder);
 
             group.position.set(x, y, z);
@@ -446,7 +456,7 @@
             platforms.push({ 
                 mesh: mainMesh, group: group, type: type, 
                 size: { w, h, d }, pos: { x, y, z },
-                initY: y, timeOffset: Math.random() * 5
+                timeOffset: Math.random() * 5
             });
         }
 
@@ -461,29 +471,29 @@
             platforms = []; traps = []; coinsArr = []; checkpoints = [];
             hasKey1 = false; updateHUDKeys();
 
-            const mapLength = 25 + Math.floor(levelNum * 1.5);
+            const mapLength = 22 + Math.floor(levelNum * 1.5);
             let currentZ = 0, currentY = 0, currentX = 0;
 
-            createStylizedPlatform(0, 0, 0, 10, 1.2, 10, 0x1e293b);
+            createStylizedPlatform(0, 0, 0, 10, 1.4, 10, 0x1e293b);
 
             for (let i = 0; i < mapLength; i++) {
                 const gapZ = 6.2 + (levelNum * 0.05); 
                 const stepY = (Math.sin(i * 0.5) * 0.8); 
-                const shiftX = (Math.cos(i * 0.6) * 4.0); 
+                const shiftX = (Math.cos(i * 0.6) * 3.8); 
 
                 currentZ -= gapZ; currentY += stepY; currentX = shiftX;
 
-                const pWidth = Math.max(3.2, 5.5 - (levelNum * 0.08));
+                const pWidth = Math.max(3.4, 5.5 - (levelNum * 0.07));
                 let platColor = 0x1e293b;
                 let type = 'normal';
 
-                if (i % 5 === 0) { type = 'disappearing'; platColor = 0x991b1b; }
-                else if (i % 3 === 0) { type = 'moving'; platColor = 0x0284c7; }
+                if (i % 5 === 0) { type = 'disappearing'; platColor = 0x7f1d1d; }
+                else if (i % 3 === 0) { type = 'moving'; platColor = 0x0369a1; }
 
-                createStylizedPlatform(currentX, currentY, currentZ, pWidth, 1.2, pWidth, platColor, type);
+                createStylizedPlatform(currentX, currentY, currentZ, pWidth, 1.4, pWidth, platColor, type);
 
                 if (i === Math.floor(mapLength / 2)) {
-                    createCheckpoint(currentX, currentY + 0.6, currentZ);
+                    createCheckpoint(currentX, currentY + 0.7, currentZ);
                 }
 
                 if (i % 2 === 0) createCoin(currentX, currentY + 1.6, currentZ);
@@ -515,7 +525,7 @@
             roomDoorObj = new THREE.Group();
             roomDoorObj.position.set(x, y, z);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
             const floor = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 12), new THREE.MeshStandardMaterial({ color: 0x1e1b4b }));
             floor.position.set(0, 0, 0);
 
@@ -536,8 +546,8 @@
             canDash = false; isDashing = true;
             playSound(600, 'sawtooth', 0.1);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion);
-            velocity.x = forward.x * 0.58; velocity.z = forward.z * 0.58;
-            showToast("⚡ اندفاع الشيكبوينت!");
+            velocity.x = forward.x * 0.6; velocity.z = forward.z * 0.6;
+            showToast("⚡ اندفاع سريع!");
             setTimeout(() => { isDashing = false; }, 220);
             setTimeout(() => { canDash = true; }, 1000);
         }
@@ -607,6 +617,29 @@
             }
         }
 
+        function updatePlayerAnimations(speed) {
+            if (!leftArm || !rightArm || !leftLeg || !rightLeg) return;
+
+            if (!isGrounded) {
+                leftArm.rotation.x = -Math.PI * 0.7;
+                rightArm.rotation.x = -Math.PI * 0.7;
+                leftLeg.rotation.x = Math.PI * 0.2;
+                rightLeg.rotation.x = -Math.PI * 0.2;
+            } else if (speed > 0.03) {
+                animTime += speed * 2.8;
+                const armAngle = Math.sin(animTime) * 0.7;
+                const legAngle = Math.cos(animTime) * 0.7;
+
+                leftArm.rotation.x = armAngle;
+                rightArm.rotation.x = -armAngle;
+                leftLeg.rotation.x = legAngle;
+                rightLeg.rotation.x = -legAngle;
+            } else {
+                leftArm.rotation.x = 0; rightArm.rotation.x = 0;
+                leftLeg.rotation.x = 0; rightLeg.rotation.x = 0;
+            }
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             if (isDying) { renderer.render(scene, camera); return; }
@@ -623,11 +656,14 @@
                 }
             });
 
-            // حركة الوحش المطارد
+            // حركة وحش المغارة المطارد
             if (monsterGroup && playerGroup) {
                 monsterGroup.position.z -= monsterSpeed;
                 monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.03;
-                monsterGroup.position.y = playerGroup.position.y;
+                monsterGroup.position.y = playerGroup.position.y - 0.2;
+
+                monsterLeftArm.rotation.x = Math.sin(time * 3) * 0.5;
+                monsterRightArm.rotation.x = -Math.sin(time * 3) * 0.5;
 
                 if (playerGroup.position.distanceTo(monsterGroup.position) < 2.2) {
                     showToast("👹 التهمك الوحش!");
@@ -635,7 +671,7 @@
                 }
             }
 
-            // حركة اللاعب والفيزياء
+            // حركة وديناميكية التحكم باللاعب
             targetVelocity.x = 0; targetVelocity.z = 0;
             let moveSpeed = baseSpeed;
 
@@ -647,39 +683,54 @@
             velocity.x += (targetVelocity.x - velocity.x) * 0.28;
             velocity.z += (targetVelocity.z - velocity.z) * 0.28;
 
-            if (Math.abs(velocity.x) > 0.02 || Math.abs(velocity.z) > 0.02) {
+            const horizSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            if (horizSpeed > 0.02) {
                 playerGroup.rotation.y = Math.atan2(-velocity.x, -velocity.z);
             }
 
             velocity.y -= gravity;
-            playerGroup.position.x += velocity.x;
-            playerGroup.position.y += velocity.y;
-            playerGroup.position.z += velocity.z;
 
-            // نظام تصادم ثقيل ودقيق مع المنصات
+            // نظام تصادم ثنائي الأبعاد ودقيق جداً لمنع السقوط الحادث (AABB Box Collider)
+            let nextX = playerGroup.position.x + velocity.x;
+            let nextY = playerGroup.position.y + velocity.y;
+            let nextZ = playerGroup.position.z + velocity.z;
+
             isGrounded = false;
-            const playerFeetY = playerGroup.position.y - 0.75;
-            const playerX = playerGroup.position.x;
-            const playerZ = playerGroup.position.z;
 
             for (let p of platforms) {
                 if (!p.group.visible) continue;
-                const pX = p.group.position.x;
-                const halfW = p.size.w / 2 + 0.3;
-                const halfD = p.size.d / 2 + 0.3;
-                const topY = p.pos.y + p.size.h / 2;
 
-                if (playerX >= pX - halfW && playerX <= pX + halfW &&
-                    playerZ >= p.pos.z - halfD && playerZ <= p.pos.z + halfD) {
-                    
-                    if (velocity.y <= 0 && playerFeetY <= topY && playerFeetY >= topY - 0.5) {
-                        playerGroup.position.y = topY + 0.75;
+                const pX = p.group.position.x;
+                const pY = p.pos.y;
+                const pZ = p.pos.z;
+
+                const pHalfW = p.size.w / 2;
+                const pHalfH = p.size.h / 2;
+                const pHalfD = p.size.d / 2;
+
+                // التحقق من تداخل الصناديق في محاور X, Z
+                const overlapX = (nextX + playerSize.w / 2 > pX - pHalfW) && (nextX - playerSize.w / 2 < pX + pHalfW);
+                const overlapZ = (nextZ + playerSize.d / 2 > pZ - pHalfD) && (nextZ - playerSize.d / 2 < pZ + pHalfD);
+
+                if (overlapX && overlapZ) {
+                    const playerBottom = nextY;
+                    const platformTop = pY + pHalfH;
+
+                    // الاستقرار فوق سطح المنصة بدقة ومنع الهبوط تحتها
+                    if (velocity.y <= 0 && playerBottom <= platformTop + 0.25 && playerBottom >= platformTop - 0.5) {
+                        nextY = platformTop;
                         velocity.y = 0;
                         isGrounded = true;
                         jumpsLeft = maxJumps;
                     }
                 }
             }
+
+            playerGroup.position.x = nextX;
+            playerGroup.position.y = nextY;
+            playerGroup.position.z = nextZ;
+
+            updatePlayerAnimations(horizSpeed);
 
             // تفعيل الشيكبوينت
             checkpoints.forEach(cp => {
@@ -688,7 +739,7 @@
                     lastCheckpointPos = cp.pos;
                     cp.group.getObjectByName("flagMesh").material.color.setHex(0x22c55e);
                     playSound(750, 'sine', 0.2);
-                    showToast("🚩 وصلت نقطة حفظ جديدة!");
+                    showToast("🚩 تم حفظ موقعك!");
                     document.getElementById('hud-cp').textContent = "محفوظة";
                 }
             });
@@ -707,7 +758,7 @@
                 showToast("🔑 جمعت المفتاح!");
             }
 
-            if (playerGroup.position.y < -14) triggerDeathAnimation();
+            if (playerGroup.position.y < -12) triggerDeathAnimation();
 
             const finishObj = scene.getObjectByName("finish");
             if (finishObj) {
@@ -718,10 +769,10 @@
                 }
             }
 
-            // كاميرا الكواليس والمتابعة
+            // كاميرا المتتبع السلسة
             camera.position.x += (playerGroup.position.x - camera.position.x) * 0.1;
             camera.position.y += (playerGroup.position.y + 4.2 - camera.position.y) * 0.1;
-            camera.position.z += (playerGroup.position.z + 10.0 - camera.position.z) * 0.1;
+            camera.position.z += (playerGroup.position.z + 9.5 - camera.position.z) * 0.1;
             camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z - 2);
 
             renderer.render(scene, camera);
