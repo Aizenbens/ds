@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What? - Horror Edition</title>
+    <title>From What? - Ultimate Horror</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #010103; user-select: none; touch-action: none; }
@@ -63,16 +63,15 @@
         #hud {
             position: absolute; top: 12px; right: 12px; left: 12px;
             display: flex; justify-content: space-between; pointer-events: none;
-            color: white; font-size: 12px; font-weight: bold; z-index: 5; flex-wrap: wrap; gap: 8px;
+            color: white; font-size: 11px; font-weight: bold; z-index: 5; flex-wrap: wrap; gap: 6px;
         }
 
         .hud-card {
-            background: rgba(10, 10, 15, 0.85); padding: 6px 12px;
+            background: rgba(10, 10, 15, 0.85); padding: 6px 10px;
             border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
-            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 6px;
+            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 5px;
         }
 
-        /* شريط الجري والطاقة */
         #stamina-container {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
             width: 200px; height: 10px; background: rgba(15, 23, 42, 0.8);
@@ -84,12 +83,11 @@
             transition: width 0.1s linear;
         }
 
-        /* تأثير الرعب حول الشاشة */
         #vignette {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 2;
             box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
-            transition: box-shadow 0.3s ease;
+            transition: box-shadow 0.2s ease;
         }
 
         #win-modal {
@@ -115,7 +113,6 @@
             border: 1px solid rgba(250, 204, 21, 0.5); z-index: 6; text-align: center;
         }
 
-        /* أزرار لمس للهواتف الذكية */
         .touch-btn {
             position: absolute; z-index: 8; background: rgba(255,255,255,0.15);
             border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 50%;
@@ -192,6 +189,7 @@
     </div>
 
     <div id="hud">
+        <div class="hud-card">💀 الموت: <span id="hud-deaths" style="color: #ef4444;">0</span></div>
         <div class="hud-card">🔑 المفتاح: <span id="hud-key" style="color: #ef4444;">❌</span></div>
         <div class="hud-card">🚩 نقطة الحفظ: <span id="hud-cp" style="color: #ef4444;">لم تُفعل</span></div>
         <div class="hud-card">💰 <span id="hud-coins" style="color: #facc15;">0</span></div>
@@ -208,7 +206,7 @@
 
     <div id="win-modal">
         <h2>🏆 نجوت من الظلام!</h2>
-        <p>تمكنت من فتح الباب واجتياز الرعب!</p>
+        <p>تمكنت من اجتياز هذه المرحلة ببراعة!</p>
         <button class="btn-main" onclick="nextLevelAction()">المرحلة التالية ⏩</button>
     </div>
 
@@ -217,6 +215,7 @@
     <script>
         let savedLevel = parseInt(localStorage.getItem('fw_level')) || 1;
         let savedCoins = parseInt(localStorage.getItem('fw_coins')) || 0;
+        let savedDeaths = parseInt(localStorage.getItem('fw_deaths')) || 0;
         let ownedSkins = JSON.parse(localStorage.getItem('fw_skins')) || ['default'];
         let equippedSkin = localStorage.getItem('fw_equipped_skin') || 'default';
 
@@ -232,18 +231,20 @@
         let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
         let playerGroup, torchLight, torchSpot, ambientLight;
         let monsterGroup = null;
-        let platforms = [], obstacles = [], items = [], checkpoints = [], keyMesh = null, doorMesh = null;
+        let platforms = [], obstacles = [], items = [], checkpoints = [], pressurePlates = [];
+        let keyMesh = null, doorMesh = null;
         
         let hasKey = false;
-        let activeCheckpointPos = null;
+        let platePressed = false;
+        let activeCheckpointPos = JSON.parse(localStorage.getItem('fw_active_cp')) || null;
         let coinsCount = savedCoins;
+        let deathsCount = savedDeaths;
         let isDying = false;
         
         let currentLevel = savedLevel;
         let isGrounded = false;
         let jumpsLeft = 1;
 
-        // نظام الجري والإجهاد والانحناء
         let maxStamina = 7.0; 
         let currentStamina = maxStamina;
         let isSprinting = false;
@@ -254,16 +255,15 @@
         const gravity = 0.015;
         let velocity = { x: 0, y: 0, z: 0 };
         let walkSpeed = 0.14;
-        let runSpeed = 0.26;
+        let runSpeed = 0.25;
         let crouchSpeed = 0.07;
-        let jumpForce = 0.36;
+        let jumpForce = 0.35;
         let monsterSpeed = 0.11;
         const keys = {};
 
         let pitch = 0, yaw = 0;
-        const playerRadius = 0.25; // نصف قطر أمان صغير لمنع التعليق نهائياً
+        const playerRadius = 0.25;
 
-        // إعداد الصوت وتأثيرات الرعب
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -421,7 +421,6 @@
                 keys[e.key.toLowerCase()] = false;
             });
 
-            // دعم التحكم لمس الهواتف
             if ('ontouchstart' in window) {
                 document.querySelectorAll('.touch-btn').forEach(btn => btn.style.display = 'flex');
                 document.getElementById('btn-jump').ontouchstart = (e) => { e.preventDefault(); simulateJump(); };
@@ -459,7 +458,7 @@
             monsterGroup.position.set(0, 0, 18);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.11 + (currentLevel * 0.002);
+            monsterSpeed = 0.10 + (currentLevel * 0.002);
         }
 
         function createWallOrPlatform(x, y, z, w, h, d, colorHex, isWall = false) {
@@ -489,6 +488,16 @@
             items.push({ mesh: drink, type: 'energy' });
         }
 
+        function createPressurePlate(x, y, z) {
+            const plate = new THREE.Mesh(
+                new THREE.BoxGeometry(1.6, 0.1, 1.6),
+                new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x7f1d1d })
+            );
+            plate.position.set(x, y + 0.05, z);
+            scene.add(plate);
+            pressurePlates.push({ mesh: plate, pressed: false, pos: { x, y, z } });
+        }
+
         function createCheckpoint(x, y, z) {
             const cpGroup = new THREE.Group();
             const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
@@ -505,7 +514,6 @@
             checkpoints.push({ group: cpGroup, pos: { x, y: y + 1.2, z }, activated: false });
         }
 
-        // بناء المتاهة مع حماية منطقة البداية (0,0) لمنع التعليق إطلاقاً
         function buildMazeLevel(levelNum) {
             ambientLight.intensity = 0.015;
             scene.fog = new THREE.FogExp2(0x010103, 0.075);
@@ -513,7 +521,6 @@
             const cellSize = 7; 
             const gridCount = 6 + (levelNum - 30);
 
-            // الأرضية الكلية
             createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x111827);
 
             for (let r = 0; r < gridCount; r++) {
@@ -521,21 +528,19 @@
                     let rx = (r - gridCount / 2) * cellSize + cellSize / 2;
                     let rz = (c - gridCount / 2) * cellSize + cellSize / 2;
 
-                    // حماية منطقة البداية والنقطة (0,0) لمنع تراسبن الجدران عند اللاعب
-                    if (Math.abs(rx) < cellSize * 1.2 && Math.abs(rz) < cellSize * 1.2) {
-                        continue; 
-                    }
+                    // حماية نقطة بداية اللاعب
+                    if (Math.abs(rx) < cellSize * 1.2 && Math.abs(rz) < cellSize * 1.2) continue; 
 
-                    // توليد الحدود والجدران الداخلية
-                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.45) {
+                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.48) {
                         createWallOrPlatform(rx, 3, rz, cellSize - 1.2, 6, cellSize - 1.2, 0x030712, true);
-                    } else if (Math.random() < 0.25) {
+                    } else if (Math.random() < 0.2) {
                         createEnergyDrink(rx, 0, rz);
                     }
                 }
             }
 
             createCheckpoint(0, 0, 0);
+            createPressurePlate(cellSize * 1.5, 0, cellSize * 1.5);
 
             // المفتاح والباب
             keyMesh = new THREE.Mesh(
@@ -555,7 +560,7 @@
             const doorBox = new THREE.Box3().setFromObject(doorMesh);
             obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
 
-            showToast("🩸 المتاهة مفتوحة للحركة الآن! ابحث عن المفتاح 🔑 واحتسِ المشروب 🥤");
+            showToast("⚠️ اضغط على الزر الأحمر الأرضي 🔴 ثم ابحث عن المفتاح 🔑");
         }
 
         function buildCaveLevel(levelNum) {
@@ -563,13 +568,16 @@
             obstacles.forEach(o => scene.remove(o.mesh));
             checkpoints.forEach(c => scene.remove(c.group));
             items.forEach(i => scene.remove(i.mesh));
+            pressurePlates.forEach(pp => scene.remove(pp.mesh));
             if (keyMesh) scene.remove(keyMesh);
             if (doorMesh) scene.remove(doorMesh);
 
-            platforms = []; obstacles = []; checkpoints = []; items = []; hasKey = false; activeCheckpointPos = null;
+            platforms = []; obstacles = []; checkpoints = []; items = []; pressurePlates = [];
+            hasKey = false; platePressed = false; activeCheckpointPos = null;
             document.getElementById('hud-key').textContent = "❌";
             document.getElementById('hud-cp').textContent = "لم تُفعل";
             document.getElementById('hud-cp').style.color = "#ef4444";
+            document.getElementById('hud-deaths').textContent = deathsCount;
 
             if (levelNum > 30) {
                 buildMazeLevel(levelNum);
@@ -614,6 +622,7 @@
 
             document.getElementById('hud-level').textContent = currentLevel;
             document.getElementById('hud-coins').textContent = coinsCount;
+            document.getElementById('hud-deaths').textContent = deathsCount;
             document.getElementById('menu').style.display = 'none';
 
             if (!scene) initScene();
@@ -629,6 +638,9 @@
         function triggerDeathAnimation() {
             if (isDying) return;
             isDying = true;
+            deathsCount++;
+            localStorage.setItem('fw_deaths', deathsCount);
+            document.getElementById('hud-deaths').textContent = deathsCount;
             playSound(110, 'sawtooth', 0.4);
             
             setTimeout(() => {
@@ -683,7 +695,7 @@
             const delta = 0.016;
             const time = Date.now() * 0.003;
 
-            // تحديث نظام الجري والطاقة (Stamina)
+            // تحديث الجري والإجهاد
             const wantsToRun = keys['shift'] || keys['shiftleft'];
             if (wantsToRun && !staminaExhausted && !isCrouching && (keys['w'] || keys['s'] || keys['a'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'])) {
                 isSprinting = true;
@@ -691,8 +703,8 @@
                 if (currentStamina <= 0) {
                     currentStamina = 0;
                     staminaExhausted = true;
-                    playSound(100, 'triangle', 0.5); // صوت الإجهاد
-                    showToast("⚠️ نَفَدَت طاقتك من الجري!");
+                    playSound(100, 'triangle', 0.5);
+                    showToast("⚠️ نَفَدَت طاقتك!");
                 }
             } else {
                 isSprinting = false;
@@ -703,14 +715,14 @@
             }
             document.getElementById('stamina-bar').style.width = `${(currentStamina / maxStamina) * 100}%`;
 
-            // التقاط المشروبات والأغراض
+            // المشروبات
             for (let i = items.length - 1; i >= 0; i--) {
                 let it = items[i];
                 if (playerGroup.position.distanceTo(it.mesh.position) < 1.5) {
                     if (it.type === 'energy') {
                         currentStamina = maxStamina;
                         staminaExhausted = false;
-                        showToast("🥤 شربت مشروب طاقة! استرجعت طاقتك بالكامل");
+                        showToast("🥤 استرجعت طاقتك بالكامل!");
                         playSound(600, 'sine', 0.2);
                     }
                     scene.remove(it.mesh);
@@ -718,17 +730,34 @@
                 }
             }
 
-            // مطاردة الوحش وتأثير الرعب الضبابي (Vignette)
+            // الأزرار الأرضية (Pressure Plates)
+            for (let pp of pressurePlates) {
+                if (!pp.pressed && playerGroup.position.distanceTo(new THREE.Vector3(pp.pos.x, pp.pos.y, pp.pos.z)) < 1.4) {
+                    pp.pressed = true;
+                    pp.mesh.material.color.setHex(0x22c55e);
+                    platePressed = true;
+                    playSound(500, 'square', 0.3);
+                    showToast("🟢 تم تفعيل الزر الأرضي! فتح الباب.");
+                }
+            }
+
+            // ذكاء اصطناعي للوحش ومطاردته المتقدمة
             if (monsterGroup && playerGroup) {
                 const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
+                const actualMonsterSpeed = isCrouching ? monsterSpeed * 0.4 : monsterSpeed;
                 
-                // خفض السرعة إذا كان اللاعب ينحني ويختبئ
-                const actualMonsterSpeed = isCrouching ? monsterSpeed * 0.5 : monsterSpeed;
-                monsterGroup.position.z -= actualMonsterSpeed;
-                monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.015;
+                // توجيه ذكي يتفادى الاصطدام المباشر بالحوائط
+                let dirX = playerGroup.position.x - monsterGroup.position.x;
+                let dirZ = playerGroup.position.z - monsterGroup.position.z;
+                let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+                
+                if (len > 0) {
+                    monsterGroup.position.x += (dirX / len) * actualMonsterSpeed;
+                    monsterGroup.position.z += (dirZ / len) * actualMonsterSpeed;
+                }
                 monsterGroup.position.y = playerGroup.position.y - 0.2;
 
-                // تأثير خفقان القلب وزيادة إظلام الشاشة مع اقتراب الوحش
+                // تأثير خفقان القلب والتشويش البصري
                 if (distToMonster < 15.0) {
                     const intensity = Math.max(0, (15.0 - distToMonster) / 15.0);
                     document.getElementById('vignette').style.boxShadow = `inset 0 0 ${100 + intensity * 150}px rgba(${Math.floor(intensity * 255)}, 0, 0, ${0.8 + intensity * 0.2})`;
@@ -743,35 +772,40 @@
                 }
 
                 if (distToMonster < 1.8) {
-                    showToast("💀 امسك بك الوحش!");
+                    showToast("💀 نالك الوحش!");
                     triggerDeathAnimation();
                 }
             }
 
-            // تفعيل نقاط الحفظ
+            // نقاط الحفظ
             for (let cp of checkpoints) {
                 if (!cp.activated && playerGroup.position.distanceTo(new THREE.Vector3(cp.pos.x, cp.pos.y, cp.pos.z)) < 2.0) {
                     cp.activated = true;
                     activeCheckpointPos = cp.pos;
+                    localStorage.setItem('fw_active_cp', JSON.stringify(activeCheckpointPos));
                     cp.group.getObjectByName("cpFlag").material.color.setHex(0x22c55e);
                     document.getElementById('hud-cp').textContent = "مفعلة 🟢";
                     document.getElementById('hud-cp').style.color = "#22c55e";
                     playSound(700, 'sine', 0.2);
-                    showToast("🚩 تم حفظ نقطة التقدم!");
+                    showToast("🚩 تم حفظ موقعك دائمًا!");
                 }
             }
 
             // المفتاح
             if (keyMesh && playerGroup.position.distanceTo(keyMesh.position) < 2.0 && !hasKey) {
-                hasKey = true;
-                scene.remove(keyMesh);
-                document.getElementById('hud-key').textContent = "تم 🔑";
-                document.getElementById('hud-key').style.color = "#22c55e";
-                playSound(800, 'sine', 0.2);
-                showToast("🔑 حصلت على المفتاح! اهرب الآن.");
+                if (currentLevel > 30 && !platePressed) {
+                    showToast("⚠️ يجب عليك تفعيل الزر الأرضي أولاً!");
+                } else {
+                    hasKey = true;
+                    scene.remove(keyMesh);
+                    document.getElementById('hud-key').textContent = "تم 🔑";
+                    document.getElementById('hud-key').style.color = "#22c55e";
+                    playSound(800, 'sine', 0.2);
+                    showToast("🔑 حصلت على المفتاح!");
+                }
             }
 
-            // تحديد السرعة وحساب حركة WASD والأسهم
+            // فيزياء حركة سلسة للغاية مع الخاصية الانزلاقية (Wall Sliding)
             let moveSpeed = isCrouching ? crouchSpeed : (isSprinting ? runSpeed : walkSpeed);
             let targetVx = 0, targetVz = 0;
 
@@ -786,45 +820,43 @@
             let vx = targetVx * cos - targetVz * sin;
             let vz = targetVx * sin + targetVz * cos;
 
-            velocity.x += (vx - velocity.x) * 0.35;
-            velocity.z += (vz - velocity.z) * 0.35;
+            velocity.x += (vx - velocity.x) * 0.3;
+            velocity.z += (vz - velocity.z) * 0.3;
             velocity.y -= gravity;
 
-            // خوارزمية التصادم السلسة
+            // خوارزمية اختبار المحاور بشكل منفصل لمنع التعليق إطلاقاً (Wall Sliding Physics)
             let oldX = playerGroup.position.x;
             let oldY = playerGroup.position.y;
             let oldZ = playerGroup.position.z;
 
-            let newX = oldX + velocity.x;
-            let newY = oldY + velocity.y;
-            let newZ = oldZ + velocity.z;
-
+            // اختبر الحركة على محور X فقط أولاً
+            let tempX = oldX + velocity.x;
             for (let obs of obstacles) {
-                if (obs.isDoor && hasKey && playerGroup.position.distanceTo(doorMesh.position) < 3.2) {
-                    openWinModal();
-                    return;
-                }
-
-                if (newX + playerRadius > obs.min.x && newX - playerRadius < obs.max.x &&
+                if (obs.isDoor && hasKey && playerGroup.position.distanceTo(doorMesh.position) < 3.2) { openWinModal(); return; }
+                if (tempX + playerRadius > obs.min.x && tempX - playerRadius < obs.max.x &&
                     oldZ + playerRadius > obs.min.z && oldZ - playerRadius < obs.max.z &&
                     oldY + 1.8 > obs.min.y && oldY < obs.max.y) {
-                    newX = oldX; velocity.x = 0;
-                }
-
-                if (oldX + playerRadius > obs.min.x && oldX - playerRadius < obs.max.x &&
-                    newZ + playerRadius > obs.min.z && newZ - playerRadius < obs.max.z &&
-                    oldY + 1.8 > obs.min.y && oldY < obs.max.y) {
-                    newZ = oldZ; velocity.z = 0;
+                    tempX = oldX; velocity.x = 0; break;
                 }
             }
 
+            // اختبر الحركة على محور Z فقط
+            let tempZ = oldZ + velocity.z;
+            for (let obs of obstacles) {
+                if (tempX + playerRadius > obs.min.x && tempX - playerRadius < obs.max.x &&
+                    tempZ + playerRadius > obs.min.z && tempZ - playerRadius < obs.max.z &&
+                    oldY + 1.8 > obs.min.y && oldY < obs.max.y) {
+                    tempZ = oldZ; velocity.z = 0; break;
+                }
+            }
+
+            let tempY = oldY + velocity.y;
             isGrounded = false;
             for (let plat of platforms) {
-                if (newX + playerRadius > plat.min.x && newX - playerRadius < plat.max.x &&
-                    newZ + playerRadius > plat.min.z && newZ - playerRadius < plat.max.z) {
-                    
-                    if (velocity.y <= 0 && oldY >= plat.max.y - 0.2 && newY <= plat.max.y + 0.1) {
-                        newY = plat.max.y;
+                if (tempX + playerRadius > plat.min.x && tempX - playerRadius < plat.max.x &&
+                    tempZ + playerRadius > plat.min.z && tempZ - playerRadius < plat.max.z) {
+                    if (velocity.y <= 0 && oldY >= plat.max.y - 0.2 && tempY <= plat.max.y + 0.1) {
+                        tempY = plat.max.y;
                         velocity.y = 0;
                         isGrounded = true;
                         jumpsLeft = currentLevel > 30 ? 1 : 2;
@@ -832,9 +864,9 @@
                 }
             }
 
-            playerGroup.position.set(newX, newY, newZ);
+            playerGroup.position.set(tempX, tempY, tempZ);
 
-            // الكاميرا وأنيميشن الانحناء
+            // الكاميرا واهتزاز الرؤية
             const eyeHeight = isCrouching ? 0.8 : 1.5;
             const isMoving = isGrounded && (Math.abs(velocity.x) > 0.02 || Math.abs(velocity.z) > 0.02);
             const headBob = isMoving ? Math.sin(time * (isSprinting ? 18 : 10)) * (isSprinting ? 0.08 : 0.04) : 0;
@@ -843,7 +875,7 @@
 
             if (torchLight && torchSpot) {
                 torchLight.position.set(camera.position.x, camera.position.y - 0.2, camera.position.z);
-                torchLight.intensity = isCrouching ? 0.8 : (4.5 + Math.sin(time * 20) * 0.6); // انخفاض الشعلة أثناء الانحناء
+                torchLight.intensity = isCrouching ? 0.8 : (4.5 + Math.sin(time * 20) * 0.6);
 
                 torchSpot.position.copy(camera.position);
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
