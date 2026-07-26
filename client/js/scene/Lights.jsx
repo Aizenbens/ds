@@ -11,8 +11,7 @@ export default function Lights() {
         position={[10, 20, 10]}
         intensity={2}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize={[2048, 2048]}
       />
     </>
   );
