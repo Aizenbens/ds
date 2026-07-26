@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Escape The Unknown - الخريطة الموردة والمستويات</title>
+    <title>Escape The Unknown - ذكاء الوحش والألغاز</title>
     
     <link rel="stylesheet" href="CSS/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -15,8 +15,8 @@
     <div id="toast-msg"></div>
 
     <div id="menu">
-        <h1>👁️ البقاء على قيد الحياة - المستويات 👁️</h1>
-        <p>اعثر على المفاتيح للانتقال بين المستويات، وافتح المخرج النهائي في أسرع وقت ممكن!</p>
+        <h1>👁️ البقاء على قيد الحياة - الوحش الذكي 👁️</h1>
+        <p>انتبه! الوحش الآن أكثر دهاءً، يمكنه إعداد كمائن لك والبحث في مكان خطواتك. استخدم الخزائن للاختباء بحذر!</p>
         <button class="btn-main" onclick="startGame()">بدء التحدي 🏃‍♂️💀</button>
     </div>
 
@@ -46,7 +46,7 @@
     </div>
 
     <div id="controls-hint">
-        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] التقاط / فتح
+        [W,A,S,D] حركة | [Shift/Click] جري | [Space] قفز | [C] انزلاق | [F] مصباح | [E] اختباء / تفاعل
     </div>
 
     <script>
@@ -56,11 +56,12 @@
         let exitDoor = null;
         let isGameStarted = false;
 
-        // إحصائيات ونظام المستويات
+        // إحصائيات اللاعب
         let currentLevel = 1;
         let stamina = 100, battery = 100;
         let isFlashlightOn = true;
         let isSprinting = false, isCrouching = false, isGrounded = false;
+        let isHiding = false; // حالة الاختباء في الخزانة
         let hasKey = false;
         
         let velocity = { x: 0, y: 0, z: 0 };
@@ -68,11 +69,17 @@
         let yaw = 0, pitch = 0;
         const keys = {};
 
-        // الأغراض والشموع
+        // حالات الوحش الذكي (AI State Machine)
+        const MONSTER_STATES = { PATROL: 'patrol', CHASE: 'chase', INVESTIGATE: 'investigate', AMBUSH: 'ambush' };
+        let monsterState = MONSTER_STATES.PATROL;
+        let lastSoundLocation = null;
+        let patrolWaypoints = [];
+        let currentWaypointIndex = 0;
+
         let interactables = [];
         let mapObjects = [];
+        let lockers = []; // الخزائن للاختباء
 
-        // النظام الصوتي
         let audioCtx = null;
         let lastStepTime = 0, lastHeartbeat = 0;
 
@@ -121,7 +128,6 @@
             scene.add(flashlight);
             scene.add(flashlight.target);
 
-            // إعداد أزرار الحركة
             window.addEventListener('mousedown', (e) => {
                 initAudio();
                 if (e.button === 0) keys['mousedown'] = true;
@@ -135,7 +141,7 @@
             });
 
             document.addEventListener('mousemove', (e) => {
-                if (document.pointerLockElement === document.body) {
+                if (document.pointerLockElement === document.body && !isHiding) {
                     yaw -= e.movementX * 0.0025;
                     pitch -= e.movementY * 0.0025;
                     pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
@@ -147,12 +153,12 @@
                 const key = e.key.toLowerCase();
                 keys[key] = true;
 
-                if (key === 'c') isCrouching = !isCrouching;
+                if (key === 'c' && !isHiding) isCrouching = !isCrouching;
                 if (key === 'f') {
                     isFlashlightOn = !isFlashlightOn;
                     playSound(400, 'square', 0.05);
                 }
-                if (e.code === 'Space' && isGrounded) {
+                if (e.code === 'Space' && isGrounded && !isHiding) {
                     velocity.y = 0.32;
                     isGrounded = false;
                     playSound(200, 'triangle', 0.1);
@@ -166,34 +172,27 @@
             buildLevel(currentLevel);
         }
 
-        // بناء وتوسيع الخريطة حسب المستوى الحالي
         function buildLevel(level) {
-            // تنظيف الخريطة السابقة
             mapObjects.forEach(obj => scene.remove(obj));
             interactables.forEach(item => scene.remove(item.mesh));
-            mapObjects = [];
-            interactables = [];
+            lockers.forEach(l => scene.remove(l));
+            mapObjects = []; interactables = []; lockers = [];
             hasKey = false;
             document.getElementById('slot-2').textContent = '❌';
 
             const floorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x1e293b : 0x0f172a, roughness: 0.5 });
             const wallMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x334155 : 0x1e1b4b, roughness: 0.7 });
 
-            // توسيع أرضية الخريطة إلى 160 × 160
             const floor = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 160), floorMat);
             floor.position.set(0, -0.5, 0);
             scene.add(floor);
             mapObjects.push(floor);
 
-            // جدران المتاهة الموسعة والغرف الإضافية
             const walls = [
-                // المحيط الخارجي
                 { x: 0, z: -80, w: 160, h: 10, d: 2 },
                 { x: 0, z: 80, w: 160, h: 10, d: 2 },
                 { x: -80, z: 0, w: 2, h: 10, d: 160 },
                 { x: 80, z: 0, w: 2, h: 10, d: 160 },
-
-                // الغرف والممرات الداخلية الموسعة
                 { x: -20, z: -30, w: 60, h: 10, d: 2 },
                 { x: 30, z: 20, w: 2, h: 10, d: 80 },
                 { x: -40, z: 20, w: 40, h: 10, d: 2 },
@@ -209,27 +208,18 @@
                 mapObjects.push(wall);
             });
 
-            // إضافة شموع على الحوائط
-            const candles = [
-                { x: 0, z: 50 }, { x: -30, z: 0 }, { x: 30, z: -20 }, { x: -50, z: -60 }, { x: 50, z: 40 }
+            // إنشاء خزائن الاختباء
+            createLocker(-10, 0, 10);
+            createLocker(20, 0, -40);
+
+            // نقاط دورية الوحش (Patrol Waypoints)
+            patrolWaypoints = [
+                new THREE.Vector3(-40, 0, -40),
+                new THREE.Vector3(40, 0, -40),
+                new THREE.Vector3(40, 0, 40),
+                new THREE.Vector3(-40, 0, 40)
             ];
 
-            candles.forEach(pos => {
-                const candleLight = new THREE.PointLight(0xff7700, 3.5, 20);
-                candleLight.position.set(pos.x, 3, pos.z);
-                scene.add(candleLight);
-                mapObjects.push(candleLight);
-
-                const candleMesh = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.15, 0.15, 0.7),
-                    new THREE.MeshBasicMaterial({ color: 0xffaa00 })
-                );
-                candleMesh.position.set(pos.x, 2.5, pos.z);
-                scene.add(candleMesh);
-                mapObjects.push(candleMesh);
-            });
-
-            // وضع المفاتيح والبطاريات بأماكن مختلفة
             if (level === 1) {
                 createItem(-60, 1, -60, 'key', 0xfacc15);
                 createItem(20, 1, 30, 'battery', 0x38bdf8);
@@ -240,15 +230,21 @@
                 document.getElementById('hud-level').textContent = "2 (السرداب السفلي 💀)";
             }
 
-            // إنشاء باب الانتقال/المخرج
             const doorMat = new THREE.MeshStandardMaterial({ color: level === 1 ? 0x2563eb : 0xb91c1c, roughness: 0.3 });
             if (exitDoor) scene.remove(exitDoor);
             exitDoor = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 0.5), doorMat);
             exitDoor.position.set(0, 4, -79);
             scene.add(exitDoor);
 
-            // إنشاء أو إعادة رسم الوحش
             createSmartMonster(level);
+        }
+
+        function createLocker(x, y, z) {
+            const lockerMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
+            const locker = new THREE.Mesh(new THREE.BoxGeometry(2.5, 6, 2.5), lockerMat);
+            locker.position.set(x, 3, z);
+            scene.add(locker);
+            lockers.push(locker);
         }
 
         function createItem(x, y, z, type, color) {
@@ -264,12 +260,28 @@
         function handleInteraction() {
             if (!playerGroup) return;
 
+            // منطق الدخول والخروج من الخزانة للاختباء
+            lockers.forEach(locker => {
+                if (playerGroup.position.distanceTo(locker.position) < 3.5) {
+                    isHiding = !isHiding;
+                    if (isHiding) {
+                        showToast("🚪 أنت مختبئ الآن داخل الخزانة! (اضغط E للخروج)");
+                        playSound(300, 'square', 0.1);
+                    } else {
+                        showToast("🚪 خرجت من الخزانة!");
+                        playSound(350, 'square', 0.1);
+                    }
+                }
+            });
+
+            if (isHiding) return;
+
             interactables.forEach((item, index) => {
                 if (playerGroup.position.distanceTo(item.pos) < 3.0) {
                     if (item.type === 'battery') {
                         battery = Math.min(100, battery + 60);
                         document.getElementById('slot-1').textContent = '🔋';
-                        showToast("🔋 تم جمع بطارية جيدة!");
+                        showToast("🔋 تم جمع بطارية جديدة!");
                     } else if (item.type === 'key') {
                         hasKey = true;
                         document.getElementById('slot-2').textContent = '🔑';
@@ -283,7 +295,6 @@
                 }
             });
 
-            // فتح الباب أو الانتقال للمستوى الثاني
             if (exitDoor && playerGroup.position.distanceTo(exitDoor.position) < 4.0) {
                 if (hasKey) {
                     if (currentLevel === 1) {
@@ -328,7 +339,7 @@
             const dist = monsterGroup.position.distanceTo(playerGroup.position);
             const dangerOverlay = document.getElementById('danger-overlay');
 
-            if (dist < 22) {
+            if (dist < 22 && !isHiding) {
                 dangerOverlay.style.opacity = (1 - dist / 22).toFixed(2);
                 if (performance.now() - lastHeartbeat > dist * 40) {
                     playSound(65, 'sine', 0.15, 0.35);
@@ -338,18 +349,39 @@
                 dangerOverlay.style.opacity = 0;
             }
 
-            // تزداد سرعة الوحش في المستوى الثاني
-            let monsterSpeed = currentLevel === 1 ? 0.08 : 0.12;
-            if (isSprinting) monsterSpeed += 0.08;
+            // منطق ذكاء الاصطناعي (AI State Machine)
+            if (isSprinting && !isHiding) {
+                monsterState = MONSTER_STATES.CHASE; // يسمع الركض ويطارد
+            } else if (dist < 15 && isFlashlightOn && !isHiding) {
+                monsterState = MONSTER_STATES.CHASE; // يرى ضوء المصباح
+            } else if (monsterState === MONSTER_STATES.CHASE && (isHiding || dist > 35)) {
+                monsterState = MONSTER_STATES.PATROL; // يفقد الأثر
+            }
 
-            const dir = new THREE.Vector3().subVectors(playerGroup.position, monsterGroup.position);
+            let targetPos = new THREE.Vector3();
+
+            if (monsterState === MONSTER_STATES.CHASE && !isHiding) {
+                targetPos.copy(playerGroup.position);
+            } else {
+                // وضع الدورية (Patrol)
+                targetPos.copy(patrolWaypoints[currentWaypointIndex]);
+                if (monsterGroup.position.distanceTo(targetPos) < 3.0) {
+                    currentWaypointIndex = (currentWaypointIndex + 1) % patrolWaypoints.length;
+                }
+            }
+
+            let monsterSpeed = currentLevel === 1 ? 0.08 : 0.12;
+            if (monsterState === MONSTER_STATES.CHASE) monsterSpeed += 0.06;
+
+            const dir = new THREE.Vector3().subVectors(targetPos, monsterGroup.position);
             dir.y = 0;
-            dir.normalize();
+            if (dir.lengthSq() > 0) dir.normalize();
 
             monsterGroup.position.add(dir.multiplyScalar(monsterSpeed));
 
-            if (dist < 2.0) {
-                showToast("💀 امسك بك الوحش!");
+            // الإمساك باللاعب إذا لم يكن مختبئاً
+            if (dist < 2.0 && !isHiding) {
+                showToast("💀 نالك الوحش الذكي!");
                 setTimeout(() => location.reload(), 1500);
             }
         }
@@ -367,7 +399,7 @@
 
             try { document.body.requestPointerLock(); } catch(e){}
 
-            showToast("⚠️ اتبع الشموع المضيئة واجمع المفتاح للانتقال للمستوى التالي!");
+            showToast("⚠️ اختبئ في الخزائن [E] لتفادي الوحش!");
             animate();
         }
 
@@ -377,13 +409,50 @@
             const now = performance.now();
             const wantsToRun = keys['shift'] || keys['mousedown'];
 
-            if (wantsToRun && stamina > 0 && !isCrouching) {
-                isSprinting = true;
-                stamina = Math.max(0, stamina - 0.35);
-            } else {
-                isSprinting = false;
-                stamina = Math.min(100, stamina + 0.25);
+            if (!isHiding) {
+                if (wantsToRun && stamina > 0 && !isCrouching) {
+                    isSprinting = true;
+                    stamina = Math.max(0, stamina - 0.35);
+                } else {
+                    isSprinting = false;
+                    stamina = Math.min(100, stamina + 0.25);
+                }
+
+                const moveSpeed = isCrouching ? 0.05 : (isSprinting ? 0.22 : 0.12);
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                forward.y = 0; right.y = 0;
+                forward.normalize(); right.normalize();
+
+                let move = new THREE.Vector3();
+                if (keys['w']) move.add(forward);
+                if (keys['s']) move.sub(forward);
+                if (keys['d']) move.add(right);
+                if (keys['a']) move.sub(right);
+
+                if (move.lengthSq() > 0) {
+                    move.normalize().multiplyScalar(moveSpeed);
+                    if (isGrounded && now - lastStepTime > (isSprinting ? 240 : 380)) {
+                        playSound(110, 'triangle', 0.05, 0.04);
+                        lastStepTime = now;
+                    }
+                }
+
+                velocity.x += (move.x - velocity.x) * 0.3;
+                velocity.z += (move.z - velocity.z) * 0.3;
+                velocity.y -= gravity;
+
+                playerGroup.position.x += velocity.x;
+                playerGroup.position.z += velocity.z;
+                playerGroup.position.y += velocity.y;
+
+                if (playerGroup.position.y <= 1.8) {
+                    playerGroup.position.y = 1.8;
+                    velocity.y = 0;
+                    isGrounded = true;
+                }
             }
+
             document.getElementById('stamina-bar').style.width = stamina + '%';
 
             if (isFlashlightOn && battery > 0) {
@@ -393,40 +462,6 @@
                 flashlight.intensity = 0;
             }
             document.getElementById('battery-bar').style.width = battery + '%';
-
-            const moveSpeed = isCrouching ? 0.05 : (isSprinting ? 0.22 : 0.12);
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-            forward.y = 0; right.y = 0;
-            forward.normalize(); right.normalize();
-
-            let move = new THREE.Vector3();
-            if (keys['w']) move.add(forward);
-            if (keys['s']) move.sub(forward);
-            if (keys['d']) move.add(right);
-            if (keys['a']) move.sub(right);
-
-            if (move.lengthSq() > 0) {
-                move.normalize().multiplyScalar(moveSpeed);
-                if (isGrounded && now - lastStepTime > (isSprinting ? 240 : 380)) {
-                    playSound(110, 'triangle', 0.05, 0.04);
-                    lastStepTime = now;
-                }
-            }
-
-            velocity.x += (move.x - velocity.x) * 0.3;
-            velocity.z += (move.z - velocity.z) * 0.3;
-            velocity.y -= gravity;
-
-            playerGroup.position.x += velocity.x;
-            playerGroup.position.z += velocity.z;
-            playerGroup.position.y += velocity.y;
-
-            if (playerGroup.position.y <= 1.8) {
-                playerGroup.position.y = 1.8;
-                velocity.y = 0;
-                isGrounded = true;
-            }
 
             camera.fov += ((isSprinting ? 88 : 75) - camera.fov) * 0.1;
             camera.updateProjectionMatrix();
