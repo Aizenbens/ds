@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>From What?</title>
+    <title>From What? - Horror Edition</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { margin: 0; overflow: hidden; background: #010103; user-select: none; touch-action: none; }
@@ -11,7 +11,7 @@
         #menu {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(10, 10, 15, 0.95); padding: 20px;
+            background: rgba(8, 8, 12, 0.95); padding: 20px;
             border-radius: 20px; color: #f8fafc; text-align: center;
             box-shadow: 0 0 50px rgba(220, 38, 38, 0.6);
             border: 2px solid rgba(220, 38, 38, 0.8);
@@ -22,7 +22,7 @@
         #menu h1 { margin: 0; color: #ef4444; text-shadow: 0 0 15px #991b1b; font-size: 28px; font-weight: 900; }
         
         .preview-container {
-            width: 100%; height: 140px; background: #05070f; border-radius: 12px;
+            width: 100%; height: 130px; background: #05070f; border-radius: 12px;
             border: 1px solid #1e293b; position: relative; overflow: hidden;
         }
 
@@ -74,14 +74,22 @@
 
         /* شريط الجري والطاقة */
         #stamina-container {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 220px; height: 12px; background: rgba(15, 23, 42, 0.8);
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 10px; background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
             overflow: hidden; pointer-events: none; z-index: 5;
         }
         #stamina-bar {
             width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #facc15);
             transition: width 0.1s linear;
+        }
+
+        /* تأثير الرعب حول الشاشة */
+        #vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 2;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
+            transition: box-shadow 0.3s ease;
         }
 
         #win-modal {
@@ -106,12 +114,24 @@
             background: rgba(10, 10, 15, 0.95); padding: 8px 18px; border-radius: 10px;
             border: 1px solid rgba(250, 204, 21, 0.5); z-index: 6; text-align: center;
         }
+
+        /* أزرار لمس للهواتف الذكية */
+        .touch-btn {
+            position: absolute; z-index: 8; background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 50%;
+            display: none; justify-content: center; align-items: center;
+            font-weight: bold; user-select: none; backdrop-filter: blur(4px);
+        }
+        #btn-jump { bottom: 30px; right: 30px; width: 65px; height: 65px; font-size: 14px; }
+        #btn-run { bottom: 105px; right: 35px; width: 55px; height: 55px; font-size: 12px; }
+        #btn-crouch { bottom: 30px; right: 110px; width: 55px; height: 55px; font-size: 12px; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
+    <div id="vignette"></div>
     <div id="crosshair"></div>
 
     <div id="menu">
@@ -182,6 +202,10 @@
         <div id="stamina-bar"></div>
     </div>
 
+    <div id="btn-jump" class="touch-btn">قفز</div>
+    <div id="btn-run" class="touch-btn">جري</div>
+    <div id="btn-crouch" class="touch-btn">انحناء</div>
+
     <div id="win-modal">
         <h2>🏆 نجوت من الظلام!</h2>
         <p>تمكنت من فتح الباب واجتياز الرعب!</p>
@@ -208,7 +232,7 @@
         let previewScene, previewCamera, previewRenderer, previewPlayerGroup;
         let playerGroup, torchLight, torchSpot, ambientLight;
         let monsterGroup = null;
-        let platforms = [], obstacles = [], traps = [], checkpoints = [], keyMesh = null, doorMesh = null;
+        let platforms = [], obstacles = [], items = [], checkpoints = [], keyMesh = null, doorMesh = null;
         
         let hasKey = false;
         let activeCheckpointPos = null;
@@ -219,10 +243,11 @@
         let isGrounded = false;
         let jumpsLeft = 1;
 
-        // ميكانيكية الجري والإجهاد (Stamina System)
-        let maxStamina = 7.0; // 7 ثوانٍ جري
+        // نظام الجري والإجهاد والانحناء
+        let maxStamina = 7.0; 
         let currentStamina = maxStamina;
         let isSprinting = false;
+        let isCrouching = false;
         let staminaExhausted = false;
 
         let audioCtx = null;
@@ -230,13 +255,15 @@
         let velocity = { x: 0, y: 0, z: 0 };
         let walkSpeed = 0.14;
         let runSpeed = 0.26;
+        let crouchSpeed = 0.07;
         let jumpForce = 0.36;
-        let monsterSpeed = 0.12;
+        let monsterSpeed = 0.11;
         const keys = {};
 
         let pitch = 0, yaw = 0;
-        const playerRadius = 0.3; // حجم أصغر قليلاً لمنع التعليق في الجدران
+        const playerRadius = 0.25; // نصف قطر أمان صغير لمنع التعليق نهائياً
 
+        // إعداد الصوت وتأثيرات الرعب
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -255,6 +282,12 @@
                 osc.start();
                 osc.stop(audioCtx.currentTime + duration);
             } catch(e){}
+        }
+
+        function playHeartbeatSound() {
+            if (!audioCtx) return;
+            playSound(60, 'sine', 0.15);
+            setTimeout(() => playSound(50, 'sine', 0.15), 200);
         }
 
         function switchTab(tab) {
@@ -380,6 +413,7 @@
                 initAudio();
                 const key = e.key.toLowerCase();
                 keys[key] = true;
+                if (key === 'c') isCrouching = !isCrouching;
                 if (e.code === 'Space' && !isDying) simulateJump();
             });
 
@@ -387,11 +421,20 @@
                 keys[e.key.toLowerCase()] = false;
             });
 
+            // دعم التحكم لمس الهواتف
+            if ('ontouchstart' in window) {
+                document.querySelectorAll('.touch-btn').forEach(btn => btn.style.display = 'flex');
+                document.getElementById('btn-jump').ontouchstart = (e) => { e.preventDefault(); simulateJump(); };
+                document.getElementById('btn-run').ontouchstart = (e) => { e.preventDefault(); keys['shift'] = true; };
+                document.getElementById('btn-run').ontouchend = (e) => { e.preventDefault(); keys['shift'] = false; };
+                document.getElementById('btn-crouch').ontouchstart = (e) => { e.preventDefault(); isCrouching = !isCrouching; };
+            }
+
             window.addEventListener('resize', onWindowResize);
         }
 
         function simulateJump() {
-            const maxAllowedJumps = currentLevel > 30 ? 1 : 2; // إلغاء القفز المزدوج في المتاهة
+            const maxAllowedJumps = currentLevel > 30 ? 1 : 2;
             if (isGrounded) {
                 velocity.y = jumpForce; isGrounded = false; jumpsLeft = maxAllowedJumps - 1;
                 playSound(280, 'square', 0.12);
@@ -413,10 +456,10 @@
             eyes.position.set(0, 4.1, -0.62);
 
             monsterGroup.add(body, head, eyes);
-            monsterGroup.position.set(0, 0, 14);
+            monsterGroup.position.set(0, 0, 18);
             scene.add(monsterGroup);
 
-            monsterSpeed = 0.12 + (currentLevel * 0.002);
+            monsterSpeed = 0.11 + (currentLevel * 0.002);
         }
 
         function createWallOrPlatform(x, y, z, w, h, d, colorHex, isWall = false) {
@@ -436,74 +479,94 @@
             return mesh;
         }
 
+        function createEnergyDrink(x, y, z) {
+            const drink = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.2, 0.2, 0.6, 12),
+                new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7 })
+            );
+            drink.position.set(x, y + 0.5, z);
+            scene.add(drink);
+            items.push({ mesh: drink, type: 'energy' });
+        }
+
         function createCheckpoint(x, y, z) {
             const cpGroup = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-            flag.position.y = 1.25;
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+            const flag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+            flag.position.y = 1.1;
 
-            const flagTop = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-            flagTop.position.set(0.4, 2.2, 0); flagTop.name = "cpFlag";
+            const flagTop = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.1), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+            flagTop.position.set(0.35, 1.9, 0); flagTop.name = "cpFlag";
 
             cpGroup.add(base, flag, flagTop);
             cpGroup.position.set(x, y, z);
             scene.add(cpGroup);
 
-            checkpoints.push({ group: cpGroup, pos: { x, y: y + 1.5, z }, activated: false });
+            checkpoints.push({ group: cpGroup, pos: { x, y: y + 1.2, z }, activated: false });
         }
 
+        // بناء المتاهة مع حماية منطقة البداية (0,0) لمنع التعليق إطلاقاً
         function buildMazeLevel(levelNum) {
-            ambientLight.intensity = 0.02;
-            scene.fog = new THREE.FogExp2(0x010103, 0.07);
+            ambientLight.intensity = 0.015;
+            scene.fog = new THREE.FogExp2(0x010103, 0.075);
 
-            const unit = 6; // زيادة توسيع الممرات لحل مشكلة الحركة في المتاهة
-            const mazeSize = 7 + (levelNum - 30);
+            const cellSize = 7; 
+            const gridCount = 6 + (levelNum - 30);
 
-            createWallOrPlatform(0, -0.5, 0, mazeSize * unit, 1, mazeSize * unit, 0x111827);
+            // الأرضية الكلية
+            createWallOrPlatform(0, -0.5, 0, gridCount * cellSize, 1, gridCount * cellSize, 0x111827);
 
-            for (let r = 0; r < mazeSize; r++) {
-                for (let c = 0; c < mazeSize; c++) {
-                    let rx = (r - mazeSize / 2) * unit;
-                    let rz = (c - mazeSize / 2) * unit;
+            for (let r = 0; r < gridCount; r++) {
+                for (let c = 0; c < gridCount; c++) {
+                    let rx = (r - gridCount / 2) * cellSize + cellSize / 2;
+                    let rz = (c - gridCount / 2) * cellSize + cellSize / 2;
 
-                    if (r === 0 || c === 0 || r === mazeSize - 1 || c === mazeSize - 1 || (Math.random() > 0.55 && !(r === 1 && c === 1))) {
-                        createWallOrPlatform(rx, 3, rz, unit, 6, unit, 0x030712, true);
+                    // حماية منطقة البداية والنقطة (0,0) لمنع تراسبن الجدران عند اللاعب
+                    if (Math.abs(rx) < cellSize * 1.2 && Math.abs(rz) < cellSize * 1.2) {
+                        continue; 
+                    }
+
+                    // توليد الحدود والجدران الداخلية
+                    if (r === 0 || c === 0 || r === gridCount - 1 || c === gridCount - 1 || Math.random() > 0.45) {
+                        createWallOrPlatform(rx, 3, rz, cellSize - 1.2, 6, cellSize - 1.2, 0x030712, true);
+                    } else if (Math.random() < 0.25) {
+                        createEnergyDrink(rx, 0, rz);
                     }
                 }
             }
 
-            // إضافة نقطة حفظ في المنتصف
             createCheckpoint(0, 0, 0);
 
-            // إضافة المفتاح والباب
+            // المفتاح والباب
             keyMesh = new THREE.Mesh(
                 new THREE.TorusGeometry(0.4, 0.1, 8, 16),
                 new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04 })
             );
-            keyMesh.position.set((mazeSize / 3) * unit, 1.2, (mazeSize / 3) * unit);
+            keyMesh.position.set((gridCount / 2 - 1) * cellSize, 1.2, (gridCount / 2 - 1) * cellSize);
             scene.add(keyMesh);
 
             doorMesh = new THREE.Mesh(
-                new THREE.BoxGeometry(unit, 6, 0.8),
+                new THREE.BoxGeometry(cellSize, 6, 0.8),
                 new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.3 })
             );
-            doorMesh.position.set(0, 3, -(mazeSize / 2) * unit + 3);
+            doorMesh.position.set(0, 3, -(gridCount / 2) * cellSize + 2);
             scene.add(doorMesh);
             
             const doorBox = new THREE.Box3().setFromObject(doorMesh);
             obstacles.push({ mesh: doorMesh, box: doorBox, min: doorBox.min, max: doorBox.max, isDoor: true });
 
-            showToast("🩸 تحذير: لا يمكنك القفز المزدوج هنا! ابحث عن المفتاح 🔑");
+            showToast("🩸 المتاهة مفتوحة للحركة الآن! ابحث عن المفتاح 🔑 واحتسِ المشروب 🥤");
         }
 
         function buildCaveLevel(levelNum) {
             platforms.forEach(p => scene.remove(p.mesh));
             obstacles.forEach(o => scene.remove(o.mesh));
             checkpoints.forEach(c => scene.remove(c.group));
+            items.forEach(i => scene.remove(i.mesh));
             if (keyMesh) scene.remove(keyMesh);
             if (doorMesh) scene.remove(doorMesh);
 
-            platforms = []; obstacles = []; checkpoints = []; hasKey = false; activeCheckpointPos = null;
+            platforms = []; obstacles = []; checkpoints = []; items = []; hasKey = false; activeCheckpointPos = null;
             document.getElementById('hud-key').textContent = "❌";
             document.getElementById('hud-cp').textContent = "لم تُفعل";
             document.getElementById('hud-cp').style.color = "#ef4444";
@@ -532,10 +595,8 @@
                 const pWidth = Math.max(3.2, 5.0 - (levelNum * 0.06));
                 createWallOrPlatform(currentX, currentY, currentZ, pWidth, 1.2, pWidth, 0x1e293b);
 
-                // إضافة نقطة حفظ كل 7 منصات
-                if (i > 0 && i % 7 === 0) {
-                    createCheckpoint(currentX, currentY + 0.7, currentZ);
-                }
+                if (i > 0 && i % 7 === 0) createCheckpoint(currentX, currentY + 0.7, currentZ);
+                if (Math.random() < 0.2) createEnergyDrink(currentX, currentY + 0.7, currentZ);
             }
 
             createWallOrPlatform(currentX, currentY, currentZ - 8, 10, 1.4, 10, 0x1e1b4b);
@@ -568,7 +629,7 @@
         function triggerDeathAnimation() {
             if (isDying) return;
             isDying = true;
-            playSound(120, 'sawtooth', 0.4);
+            playSound(110, 'sawtooth', 0.4);
             
             setTimeout(() => {
                 isDying = false;
@@ -584,7 +645,7 @@
             }
             velocity = { x: 0, y: 0, z: 0 };
             yaw = 0; pitch = 0;
-            if (monsterGroup) monsterGroup.position.set(0, 0, 14);
+            if (monsterGroup) monsterGroup.position.set(0, 0, 18);
         }
 
         function showToast(text) {
@@ -613,6 +674,8 @@
             }
         }
 
+        let heartbeatTimer = 0;
+
         function animate() {
             requestAnimationFrame(animate);
             if (isDying) { renderer.render(scene, camera); return; }
@@ -620,38 +683,72 @@
             const delta = 0.016;
             const time = Date.now() * 0.003;
 
-            // تحديث نظام الجري والإجهاد (Stamina)
+            // تحديث نظام الجري والطاقة (Stamina)
             const wantsToRun = keys['shift'] || keys['shiftleft'];
-            if (wantsToRun && !staminaExhausted && (keys['w'] || keys['s'] || keys['a'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'])) {
+            if (wantsToRun && !staminaExhausted && !isCrouching && (keys['w'] || keys['s'] || keys['a'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'])) {
                 isSprinting = true;
                 currentStamina -= delta;
                 if (currentStamina <= 0) {
                     currentStamina = 0;
                     staminaExhausted = true;
-                    showToast("⚠️ أُجهدت من الجري! توقف للاستراحة");
+                    playSound(100, 'triangle', 0.5); // صوت الإجهاد
+                    showToast("⚠️ نَفَدَت طاقتك من الجري!");
                 }
             } else {
                 isSprinting = false;
                 if (currentStamina < maxStamina) {
-                    currentStamina += delta * 0.8; // تجدد الطاقة
+                    currentStamina += delta * 0.7;
                     if (currentStamina >= maxStamina * 0.3) staminaExhausted = false;
                 }
             }
             document.getElementById('stamina-bar').style.width = `${(currentStamina / maxStamina) * 100}%`;
 
-            // مطاردة الوحش
+            // التقاط المشروبات والأغراض
+            for (let i = items.length - 1; i >= 0; i--) {
+                let it = items[i];
+                if (playerGroup.position.distanceTo(it.mesh.position) < 1.5) {
+                    if (it.type === 'energy') {
+                        currentStamina = maxStamina;
+                        staminaExhausted = false;
+                        showToast("🥤 شربت مشروب طاقة! استرجعت طاقتك بالكامل");
+                        playSound(600, 'sine', 0.2);
+                    }
+                    scene.remove(it.mesh);
+                    items.splice(i, 1);
+                }
+            }
+
+            // مطاردة الوحش وتأثير الرعب الضبابي (Vignette)
             if (monsterGroup && playerGroup) {
-                monsterGroup.position.z -= monsterSpeed;
-                monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.02;
+                const distToMonster = playerGroup.position.distanceTo(monsterGroup.position);
+                
+                // خفض السرعة إذا كان اللاعب ينحني ويختبئ
+                const actualMonsterSpeed = isCrouching ? monsterSpeed * 0.5 : monsterSpeed;
+                monsterGroup.position.z -= actualMonsterSpeed;
+                monsterGroup.position.x += (playerGroup.position.x - monsterGroup.position.x) * 0.015;
                 monsterGroup.position.y = playerGroup.position.y - 0.2;
 
-                if (playerGroup.position.distanceTo(monsterGroup.position) < 2.0) {
-                    showToast("💀 نالك الوحش!");
+                // تأثير خفقان القلب وزيادة إظلام الشاشة مع اقتراب الوحش
+                if (distToMonster < 15.0) {
+                    const intensity = Math.max(0, (15.0 - distToMonster) / 15.0);
+                    document.getElementById('vignette').style.boxShadow = `inset 0 0 ${100 + intensity * 150}px rgba(${Math.floor(intensity * 255)}, 0, 0, ${0.8 + intensity * 0.2})`;
+                    
+                    heartbeatTimer += delta;
+                    if (heartbeatTimer > Math.max(0.2, 1.0 - intensity * 0.8)) {
+                        playHeartbeatSound();
+                        heartbeatTimer = 0;
+                    }
+                } else {
+                    document.getElementById('vignette').style.boxShadow = `inset 0 0 100px rgba(0, 0, 0, 0.9)`;
+                }
+
+                if (distToMonster < 1.8) {
+                    showToast("💀 امسك بك الوحش!");
                     triggerDeathAnimation();
                 }
             }
 
-            // تفعيل نقاط الحفظ (Checkpoints)
+            // تفعيل نقاط الحفظ
             for (let cp of checkpoints) {
                 if (!cp.activated && playerGroup.position.distanceTo(new THREE.Vector3(cp.pos.x, cp.pos.y, cp.pos.z)) < 2.0) {
                     cp.activated = true;
@@ -664,18 +761,18 @@
                 }
             }
 
-            // التقاط المفتاح
+            // المفتاح
             if (keyMesh && playerGroup.position.distanceTo(keyMesh.position) < 2.0 && !hasKey) {
                 hasKey = true;
                 scene.remove(keyMesh);
                 document.getElementById('hud-key').textContent = "تم 🔑";
                 document.getElementById('hud-key').style.color = "#22c55e";
                 playSound(800, 'sine', 0.2);
-                showToast("🔑 حصلت على المفتاح! هرب من الباب بسرعة.");
+                showToast("🔑 حصلت على المفتاح! اهرب الآن.");
             }
 
-            // حركة الاتجاهات (WASD والأسهم)
-            let moveSpeed = isSprinting ? runSpeed : walkSpeed;
+            // تحديد السرعة وحساب حركة WASD والأسهم
+            let moveSpeed = isCrouching ? crouchSpeed : (isSprinting ? runSpeed : walkSpeed);
             let targetVx = 0, targetVz = 0;
 
             if (keys['arrowleft'] || keys['a']) targetVx = -moveSpeed;
@@ -689,11 +786,11 @@
             let vx = targetVx * cos - targetVz * sin;
             let vz = targetVx * sin + targetVz * cos;
 
-            velocity.x += (vx - velocity.x) * 0.3;
-            velocity.z += (vz - velocity.z) * 0.3;
+            velocity.x += (vx - velocity.x) * 0.35;
+            velocity.z += (vz - velocity.z) * 0.35;
             velocity.y -= gravity;
 
-            // خوارزمية التصادم وتفادي التعليق في الجدران
+            // خوارزمية التصادم السلسة
             let oldX = playerGroup.position.x;
             let oldY = playerGroup.position.y;
             let oldZ = playerGroup.position.z;
@@ -702,7 +799,6 @@
             let newY = oldY + velocity.y;
             let newZ = oldZ + velocity.z;
 
-            // تصادم الجدران المستقل لكل محور
             for (let obs of obstacles) {
                 if (obs.isDoor && hasKey && playerGroup.position.distanceTo(doorMesh.position) < 3.2) {
                     openWinModal();
@@ -722,7 +818,6 @@
                 }
             }
 
-            // التصادم مع المنصات والأرضيات
             isGrounded = false;
             for (let plat of platforms) {
                 if (newX + playerRadius > plat.min.x && newX - playerRadius < plat.max.x &&
@@ -739,16 +834,16 @@
 
             playerGroup.position.set(newX, newY, newZ);
 
-            // أنيميشن المشي واهتزاز الشمعة الواقعي (Horror Camera Bobbing)
+            // الكاميرا وأنيميشن الانحناء
+            const eyeHeight = isCrouching ? 0.8 : 1.5;
             const isMoving = isGrounded && (Math.abs(velocity.x) > 0.02 || Math.abs(velocity.z) > 0.02);
-            const bobFrequency = isSprinting ? 18 : 10;
-            const headBob = isMoving ? Math.sin(time * bobFrequency) * (isSprinting ? 0.09 : 0.05) : 0;
+            const headBob = isMoving ? Math.sin(time * (isSprinting ? 18 : 10)) * (isSprinting ? 0.08 : 0.04) : 0;
 
-            camera.position.set(playerGroup.position.x, playerGroup.position.y + 1.5 + headBob, playerGroup.position.z);
+            camera.position.set(playerGroup.position.x, playerGroup.position.y + eyeHeight + headBob, playerGroup.position.z);
 
             if (torchLight && torchSpot) {
                 torchLight.position.set(camera.position.x, camera.position.y - 0.2, camera.position.z);
-                torchLight.intensity = 4.5 + Math.sin(time * 20) * 0.6; // تردد لهب الشمعة
+                torchLight.intensity = isCrouching ? 0.8 : (4.5 + Math.sin(time * 20) * 0.6); // انخفاض الشعلة أثناء الانحناء
 
                 torchSpot.position.copy(camera.position);
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
