@@ -11,10 +11,12 @@ export default function Movement(body, stamina) {
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
 
-  useFrame(() => {
+  const velocity = new THREE.Vector3();
+
+  useFrame((_, delta) => {
     if (!body.current) return;
 
-    const velocity = body.current.linvel();
+    const current = body.current.linvel();
 
     direction.set(0, 0, 0);
 
@@ -33,34 +35,36 @@ export default function Movement(body, stamina) {
     if (keys["KeyD"]) direction.add(right);
     if (keys["KeyA"]) direction.sub(right);
 
+    let targetSpeed = Settings.walkSpeed;
+
+    if (keys["ShiftLeft"] && stamina.stamina > 0) {
+      targetSpeed = Settings.sprintSpeed;
+      stamina.drain();
+    } else {
+      stamina.recover();
+    }
+
     if (direction.lengthSq() > 0) {
       direction.normalize();
 
-     let speed = Settings.walkSpeed;
-
-if (keys["ShiftLeft"] && stamina.stamina.current > 0) {
-  speed = Settings.sprintSpeed;
-  stamina.drain();
-} else {
-  stamina.recover();
-}
-      body.current.setLinvel(
-        {
-          x: direction.x * speed,
-          y: velocity.y,
-          z: direction.z * speed,
-        },
-        true
+      velocity.lerp(
+        direction.multiplyScalar(targetSpeed),
+        Settings.acceleration * delta
       );
     } else {
-      body.current.setLinvel(
-        {
-          x: 0,
-          y: velocity.y,
-          z: 0,
-        },
-        true
+      velocity.lerp(
+        new THREE.Vector3(),
+        Settings.deceleration * delta
       );
     }
+
+    body.current.setLinvel(
+      {
+        x: velocity.x,
+        y: current.y,
+        z: velocity.z,
+      },
+      true
+    );
   });
 }
