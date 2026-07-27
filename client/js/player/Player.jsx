@@ -3,17 +3,12 @@ import { RigidBody, CapsuleCollider } from "@react-three/rapier";
 
 import Camera from "./Camera.jsx";
 import Controls from "./Controls.jsx";
-import Movement from "./Movement.jsx";
-import Jump from "./Jump.jsx";
+import PlayerController from "./PlayerController.jsx";
 
 export default function Player() {
   const body = useRef();
 
-  // نظام الحركة
-  Movement(body);
-
-  // نظام القفز
-  Jump(body);
+  PlayerController(body);
 
   return (
     <RigidBody
@@ -27,16 +22,12 @@ export default function Player() {
       restitution={0}
       canSleep={false}
     >
-      {/* Collider اللاعب */}
       <CapsuleCollider args={[0.5, 0.4]} />
 
-      {/* كاميرا اللاعب */}
       <Camera />
-
-      {/* تحريك الماوس */}
       <Controls />
 
-      {/* جسم مؤقت للتجربة */}
+      {/* سنحذف هذا الجسم لاحقًا عندما نضيف نموذج اللاعب */}
       <mesh castShadow>
         <capsuleGeometry args={[0.4, 1, 8, 16]} />
         <meshStandardMaterial color="dodgerblue" />
