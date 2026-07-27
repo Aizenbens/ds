@@ -5,10 +5,12 @@ export default function Stamina() {
 
   const drain = () => {
     stamina.current = Math.max(0, stamina.current - 0.5);
+    window.playerStamina = stamina.current;
   };
 
   const recover = () => {
     stamina.current = Math.min(100, stamina.current + 0.25);
+    window.playerStamina = stamina.current;
   };
 
   return {
