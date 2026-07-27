@@ -1,22 +1,20 @@
-import React, { useState, useEffect } from "react";
-import StaminaBar from "./StaminaBar.jsx";
+import React from "react";
 
 export default function HUD() {
-  const [stamina, setStamina] = useState(100);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (window.playerStamina !== undefined) {
-        setStamina(window.playerStamina);
-      }
-    }, 16);
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <>
-      <StaminaBar value={stamina} />
-    </>
+    <div
+      style={{
+        position: "fixed",
+        top: "20px",
+        left: "20px",
+        background: "red",
+        color: "white",
+        padding: "20px",
+        fontSize: "30px",
+        zIndex: 999999,
+      }}
+    >
+      HUD WORKING
+    </div>
   );
 }
