@@ -1,28 +1,44 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import keys from "../input/Input.js";
 import * as THREE from "three";
+
+import keys from "../input/Input.js";
+import Settings from "./Settings.js";
 
 export default function Movement(body) {
   const { camera } = useThree();
+
+  const direction = new THREE.Vector3();
+  const forward = new THREE.Vector3();
+  const right = new THREE.Vector3();
 
   useFrame(() => {
     if (!body.current) return;
 
     const velocity = body.current.linvel();
 
-    const direction = new THREE.Vector3();
+    direction.set(0, 0, 0);
 
-    if (keys["KeyW"]) direction.z -= 1;
-    if (keys["KeyS"]) direction.z += 1;
-    if (keys["KeyA"]) direction.x -= 1;
-    if (keys["KeyD"]) direction.x += 1;
+    forward.set(0, 0, -1);
+    forward.applyQuaternion(camera.quaternion);
+    forward.y = 0;
+    forward.normalize();
 
-    if (direction.length() > 0) {
+    right.set(1, 0, 0);
+    right.applyQuaternion(camera.quaternion);
+    right.y = 0;
+    right.normalize();
+
+    if (keys["KeyW"]) direction.add(forward);
+    if (keys["KeyS"]) direction.sub(forward);
+    if (keys["KeyD"]) direction.add(right);
+    if (keys["KeyA"]) direction.sub(right);
+
+    if (direction.lengthSq() > 0) {
       direction.normalize();
 
-      const speed = keys["ShiftLeft"] ? 8 : 5;
-
-      direction.applyEuler(camera.rotation);
+      const speed = keys["ShiftLeft"]
+        ? Settings.sprintSpeed
+        : Settings.walkSpeed;
 
       body.current.setLinvel(
         {
