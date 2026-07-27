@@ -1,39 +1,14 @@
 import React, { useRef } from "react";
-import { useFrame } from "@react-three/fiber";
 import { RigidBody, CapsuleCollider } from "@react-three/rapier";
-import * as THREE from "three";
 
 import Camera from "./Camera.jsx";
 import Controls from "./Controls.jsx";
-import keys from "../input/Input.js";
+import Movement from "./Movement.jsx";
 
 export default function Player() {
   const body = useRef();
 
-  useFrame(() => {
-    if (!body.current) return;
-
-    const velocity = body.current.linvel();
-
-    let x = 0;
-    let z = 0;
-
-    const speed = keys["ShiftLeft"] ? 8 : 5;
-
-    if (keys["KeyW"]) z -= speed;
-    if (keys["KeyS"]) z += speed;
-    if (keys["KeyA"]) x -= speed;
-    if (keys["KeyD"]) x += speed;
-
-    body.current.setLinvel(
-      {
-        x,
-        y: velocity.y,
-        z,
-      },
-      true
-    );
-  });
+  Movement(body);
 
   return (
     <RigidBody
