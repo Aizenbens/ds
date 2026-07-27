@@ -4,7 +4,7 @@ import * as THREE from "three";
 import keys from "../input/Input.js";
 import Settings from "./Settings.js";
 
-export default function Movement(body) {
+export default function Movement(body, stamina) {
   const { camera } = useThree();
 
   const direction = new THREE.Vector3();
@@ -36,10 +36,14 @@ export default function Movement(body) {
     if (direction.lengthSq() > 0) {
       direction.normalize();
 
-      const speed = keys["ShiftLeft"]
-        ? Settings.sprintSpeed
-        : Settings.walkSpeed;
+     let speed = Settings.walkSpeed;
 
+if (keys["ShiftLeft"] && stamina.stamina.current > 0) {
+  speed = Settings.sprintSpeed;
+  stamina.drain();
+} else {
+  stamina.recover();
+}
       body.current.setLinvel(
         {
           x: direction.x * speed,
