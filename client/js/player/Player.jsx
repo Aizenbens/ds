@@ -2,9 +2,9 @@ import React, { useRef } from "react";
 import { RigidBody, CapsuleCollider } from "@react-three/rapier";
 
 import Camera from "./Camera.jsx";
+import CameraController from "./CameraController.jsx";
 import Controls from "./Controls.jsx";
 import PlayerController from "./PlayerController.jsx";
-import CameraController from "./Camera.jsx";
 
 export default function Player() {
   const body = useRef();
@@ -13,7 +13,7 @@ export default function Player() {
 
   return (
     <>
-      {/* التحكم بالكاميرا (FOV وغيره) */}
+      {/* التحكم بالكاميرا (FOV و HeadBob مستقبلاً) */}
       <CameraController />
 
       <RigidBody
@@ -32,7 +32,7 @@ export default function Player() {
         <Camera />
         <Controls />
 
-        {/* نموذج مؤقت للاعب */}
+        {/* جسم مؤقت للاعب */}
         <mesh castShadow>
           <capsuleGeometry args={[0.4, 1, 8, 16]} />
           <meshStandardMaterial color="dodgerblue" />
