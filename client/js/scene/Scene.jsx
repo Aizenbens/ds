@@ -10,11 +10,16 @@ import Player from "../player/Player.jsx";
 
 export default function Scene() {
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+      }}
+    >
       <Canvas
         shadows
         camera={{
-          position: [0, 6, 12],
+          position: [0, 0, 0],
           fov: 75,
         }}
       >
