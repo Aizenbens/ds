@@ -8,13 +8,13 @@ export default function StaminaBar({ value }) {
         bottom: "30px",
         left: "50%",
         transform: "translateX(-50%)",
-        width: "320px",
-        height: "22px",
+        width: "300px",
+        height: "20px",
         background: "#222",
         border: "2px solid white",
-        borderRadius: "10px",
+        borderRadius: "8px",
         overflow: "hidden",
-        zIndex: 1000,
+        zIndex: 99999,
       }}
     >
       <div
@@ -22,7 +22,7 @@ export default function StaminaBar({ value }) {
           width: `${value}%`,
           height: "100%",
           background: "#32CD32",
-          transition: "width 0.08s linear",
+          transition: "width 0.1s linear",
         }}
       />
     </div>
