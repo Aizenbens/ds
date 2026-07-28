@@ -11,43 +11,28 @@ import PlayerController from "./PlayerController.jsx";
 export default function Player() {
   const body = useRef();
 
-  // تشغيل أنظمة اللاعب
   PlayerController(body);
 
   return (
     <>
-      {/* إعداد الكاميرا */}
-     <Camera body={body} />
-
-      {/* تغيير الـ FOV */}
+      <Camera />
       <CameraController />
-
-      {/* اهتزاز الكاميرا أثناء الحركة */}
       <HeadBob />
-
-      {/* تحكم الماوس */}
       <Controls />
 
-      {/* جسم اللاعب */}
       <RigidBody
         ref={body}
         colliders={false}
         type="dynamic"
         position={[0, 3, 0]}
         enabledRotations={[false, false, false]}
+        canSleep={false}
         mass={1}
         friction={1}
-        restitution={0}
-        canSleep={false}
       >
-        {/* مصادم اللاعب */}
         <CapsuleCollider args={[0.5, 0.4]} />
 
-        {/* جسم مؤقت للاعب */}
-        <mesh visible={false}>
-          <capsuleGeometry args={[0.4, 1, 8, 16]} />
-          <meshStandardMaterial color="dodgerblue" />
-        </mesh>
+        {/* منظور أول، لذلك لا نرسم جسم اللاعب */}
       </RigidBody>
     </>
   );
