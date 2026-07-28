@@ -1,25 +1,27 @@
 const Settings = {
   // الحركة
   walkSpeed: 5,
-  sprintSpeed: 8,
+  sprintSpeed: 9,
 
-  // الفيزياء
-  acceleration: 25,
-  deceleration: 18,
-  jumpForce: 8,
-  gravity: -9.81,
+  acceleration: 12,
+  deceleration: 10,
 
-  // الطاقة
-  stamina: 100,
-  staminaDrain: 25,
-  staminaRecovery: 20,
+  // القفز
+  jumpForce: 7,
 
   // الكاميرا
-  mouseSensitivity: 0.002,
   cameraFov: 75,
   sprintFov: 82,
 
-  // Head Bob (سنستخدمه لاحقًا)
+  // الرأس
+  eyeHeight: 0.8,
+
+  // التحمل
+  maxStamina: 100,
+  staminaDrain: 35,
+  staminaRecover: 20,
+
+  // Head Bob
   headBobSpeed: 10,
   headBobAmount: 0.05,
 };
