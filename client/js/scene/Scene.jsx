@@ -29,7 +29,7 @@ export default function Scene() {
         <Sky />
         <Lights />
 
-        <Physics>
+               <Physics>
           <World />
           <Player />
         </Physics>
