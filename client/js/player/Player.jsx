@@ -17,7 +17,7 @@ export default function Player() {
   return (
     <>
       {/* إعداد الكاميرا */}
-      <Camera />
+     <Camera body={body} />
 
       {/* تغيير الـ FOV */}
       <CameraController />
@@ -44,7 +44,7 @@ export default function Player() {
         <CapsuleCollider args={[0.5, 0.4]} />
 
         {/* جسم مؤقت للاعب */}
-        <mesh castShadow>
+        <mesh visible={false}>
           <capsuleGeometry args={[0.4, 1, 8, 16]} />
           <meshStandardMaterial color="dodgerblue" />
         </mesh>
