@@ -1,18 +1,37 @@
-import { useGame } from "../core/GameManager.jsx";
+import { useRef } from "react";
+import Settings from "./Settings.js";
 
 export default function Stamina() {
-  const { stamina, setStamina } = useGame();
+  const stamina = useRef(Settings.maxStamina);
 
-  const drain = () => {
-    setStamina((value) => Math.max(0, value - 0.5));
-  };
+  function drain(delta = 1 / 60) {
+    stamina.current = Math.max(
+      0,
+      stamina.current - Settings.staminaDrain * delta
+    );
 
-  const recover = () => {
-    setStamina((value) => Math.min(100, value + 0.25));
-  };
+    window.playerStamina =
+      (stamina.current / Settings.maxStamina) * 100;
+  }
+
+  function recover(delta = 1 / 60) {
+    stamina.current = Math.min(
+      Settings.maxStamina,
+      stamina.current + Settings.staminaRecover * delta
+    );
+
+    window.playerStamina =
+      (stamina.current / Settings.maxStamina) * 100;
+  }
+
+  if (window.playerStamina === undefined) {
+    window.playerStamina = 100;
+  }
 
   return {
-    stamina,
+    get stamina() {
+      return stamina.current;
+    },
     drain,
     recover,
   };
