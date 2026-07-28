@@ -22,12 +22,17 @@ export default function Movement(body, stamina) {
     const current = body.current.linvel();
 
     // جعل الكاميرا تتبع اللاعب
-    camera.position.set(
-      position.x,
-      position.y + 0.8,
-      position.z
-    );
+   camera.position.set(
+  position.x,
+  position.y + 1.7,
+  position.z
+);
 
+camera.lookAt(
+  position.x,
+  position.y + 1.7,
+  position.z - 100
+);
     direction.set(0, 0, 0);
 
     forward.set(0, 0, -1);
