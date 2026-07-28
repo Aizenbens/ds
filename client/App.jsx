@@ -1,13 +1,20 @@
 import React from "react";
 
-import Scene from "./js/scene/Scene.jsx";
-import HUD from "./js/ui/HUD.jsx";
-
 export default function App() {
   return (
-    <>
-      <Scene />
-      <HUD />
-    </>
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        background: "red",
+        color: "white",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        fontSize: "40px",
+      }}
+    >
+      HELLO
+    </div>
   );
 }
