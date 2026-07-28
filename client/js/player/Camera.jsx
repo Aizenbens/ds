@@ -1,4 +1,6 @@
-import { useThree, useEffect } from "@react-three/fiber";
+import { useEffect } from "react";
+import { useThree } from "@react-three/fiber";
+
 import Settings from "./Settings.js";
 
 export default function Camera() {
