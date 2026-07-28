@@ -4,18 +4,31 @@ import { RigidBody, CapsuleCollider } from "@react-three/rapier";
 import Camera from "./Camera.jsx";
 import CameraController from "./CameraController.jsx";
 import Controls from "./Controls.jsx";
+import HeadBob from "./HeadBob.jsx";
+
 import PlayerController from "./PlayerController.jsx";
 
 export default function Player() {
   const body = useRef();
 
+  // تشغيل أنظمة اللاعب
   PlayerController(body);
 
   return (
     <>
-      {/* التحكم بالكاميرا (FOV و HeadBob مستقبلاً) */}
+      {/* إعداد الكاميرا */}
+      <Camera />
+
+      {/* تغيير الـ FOV */}
       <CameraController />
 
+      {/* اهتزاز الكاميرا أثناء الحركة */}
+      <HeadBob />
+
+      {/* تحكم الماوس */}
+      <Controls />
+
+      {/* جسم اللاعب */}
       <RigidBody
         ref={body}
         colliders={false}
@@ -27,10 +40,8 @@ export default function Player() {
         restitution={0}
         canSleep={false}
       >
+        {/* مصادم اللاعب */}
         <CapsuleCollider args={[0.5, 0.4]} />
-
-        <Camera />
-        <Controls />
 
         {/* جسم مؤقت للاعب */}
         <mesh castShadow>
