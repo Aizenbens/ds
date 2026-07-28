@@ -23,6 +23,7 @@ const Settings = {
 
   // Head Bob
   headBobSpeed: 10,
+  headBobSprintSpeed = 16;
   headBobAmount: 0.05,
 };
 
