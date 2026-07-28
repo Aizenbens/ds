@@ -11,7 +11,7 @@ export default function App() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        fontSize: "40px",
+        fontSize: "50px",
       }}
     >
       HELLO
