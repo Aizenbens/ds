@@ -1,34 +1,34 @@
 import { useFrame } from "@react-three/fiber";
+
 import keys from "../input/Input.js";
 import Settings from "./Settings.js";
+import GroundCheck from "./GroundCheck.jsx";
 
-let canJump = true;
+let jumpPressed = false;
 
 export default function Jump(body) {
   useFrame(() => {
     if (!body.current) return;
 
-    const velocity = body.current.linvel();
-    const position = body.current.translation();
+    const current = body.current.linvel();
 
-    // يعتبر اللاعب على الأرض عندما يكون قريبًا منها
-    const grounded = position.y <= 1.55;
+    const onGround = GroundCheck(body);
 
-    if (grounded) {
-      canJump = true;
-    }
+    if (keys["Space"]) {
+      if (!jumpPressed && onGround) {
+        body.current.setLinvel(
+          {
+            x: current.x,
+            y: Settings.jumpForce,
+            z: current.z,
+          },
+          true
+        );
 
-    if (keys["Space"] && grounded && canJump) {
-      body.current.setLinvel(
-        {
-          x: velocity.x,
-          y: Settings.jumpForce,
-          z: velocity.z,
-        },
-        true
-      );
-
-      canJump = false;
+        jumpPressed = true;
+      }
+    } else {
+      jumpPressed = false;
     }
   });
 }
