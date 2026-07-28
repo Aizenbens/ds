@@ -15,24 +15,18 @@ export default function Movement(body, stamina) {
   useFrame((_, delta) => {
     if (!body.current) return;
 
-    // موضع اللاعب
     const position = body.current.translation();
-
-    // سرعة اللاعب الحالية
     const current = body.current.linvel();
 
-    // جعل الكاميرا تتبع اللاعب
-   camera.position.set(
-  position.x,
-  position.y + 1.7,
-  position.z
-);
+    // الكاميرا تتبع اللاعب فقط
+    camera.position.set(
+      position.x,
+      position.y + 1.7,
+      position.z
+    );
 
-camera.lookAt(
-  position.x,
-  position.y + 1.7,
-  position.z - 100
-);
+    // لا تستخدم lookAt حتى يعمل PointerLockControls
+
     direction.set(0, 0, 0);
 
     forward.set(0, 0, -1);
@@ -47,8 +41,8 @@ camera.lookAt(
 
     if (keys["KeyW"]) direction.add(forward);
     if (keys["KeyS"]) direction.sub(forward);
-    if (keys["KeyD"]) direction.add(right);
     if (keys["KeyA"]) direction.sub(right);
+    if (keys["KeyD"]) direction.add(right);
 
     let targetSpeed = Settings.walkSpeed;
 
@@ -68,7 +62,7 @@ camera.lookAt(
       );
     } else {
       velocity.lerp(
-        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(),
         Settings.deceleration * delta
       );
     }
