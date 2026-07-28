@@ -1,43 +1,37 @@
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 
 import keys from "../input/Input.js";
 import Settings from "./Settings.js";
 
-let timer = 0;
-
 export default function HeadBob() {
   const { camera } = useThree();
 
+  const timer = useRef(0);
+
   useFrame((_, delta) => {
-    // إذا لم يكن هناك حركة أعد الكاميرا تدريجياً
-    if (
-      !keys["KeyW"] &&
-      !keys["KeyA"] &&
-      !keys["KeyS"] &&
-      !keys["KeyD"]
-    ) {
-      timer = 0;
+    const moving =
+      keys["KeyW"] ||
+      keys["KeyA"] ||
+      keys["KeyS"] ||
+      keys["KeyD"];
 
-      camera.position.y +=
-        (camera.position.y - camera.position.y) * delta;
-
+    if (!moving) {
+      timer.current = 0;
       return;
     }
 
-    // سرعة الاهتزاز
-    const speed = keys["ShiftLeft"]
+    const sprint = keys["ShiftLeft"];
+
+    const speed = sprint
       ? Settings.headBobSprintSpeed
       : Settings.headBobSpeed;
 
-    timer += delta * speed;
+    timer.current += delta * speed;
 
-    // الاهتزاز العمودي
     camera.position.y +=
-      Math.sin(timer) *
-      Settings.headBobAmount *
-      delta *
-      60;
+      Math.sin(timer.current) * Settings.headBobAmount * delta * 60;
   });
 
   return null;
