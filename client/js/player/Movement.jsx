@@ -10,22 +10,25 @@ export default function Movement(body, stamina) {
   const direction = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
-
   const velocity = new THREE.Vector3();
-useFrame((_, delta) => {
-  if (!body.current) return;
 
-  const current = body.current.linvel();
+  useFrame((_, delta) => {
+    if (!body.current) return;
 
-  const position = body.current.translation();
+    // موضع اللاعب
+    const position = body.current.translation();
 
-  camera.position.set(
-    position.x,
-    position.y + 0.8,
-    position.z
-  );
+    // سرعة اللاعب الحالية
+    const current = body.current.linvel();
 
-  direction.set(0, 0, 0);
+    // جعل الكاميرا تتبع اللاعب
+    camera.position.set(
+      position.x,
+      position.y + 0.8,
+      position.z
+    );
+
+    direction.set(0, 0, 0);
 
     forward.set(0, 0, -1);
     forward.applyQuaternion(camera.quaternion);
@@ -60,7 +63,7 @@ useFrame((_, delta) => {
       );
     } else {
       velocity.lerp(
-        new THREE.Vector3(),
+        new THREE.Vector3(0, 0, 0),
         Settings.deceleration * delta
       );
     }
