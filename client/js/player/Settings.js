@@ -22,9 +22,10 @@ const Settings = {
   staminaRecover: 20,
 
   // Head Bob
-  headBobSpeed: 10,
-  headBobSprintSpeed = 16;
-  headBobAmount: 0.05,
+  // Head Bob
+headBobSpeed: 10,
+headBobSprintSpeed: 16,
+headBobAmount: 0.05,
 };
 
 export default Settings;
