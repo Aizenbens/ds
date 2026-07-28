@@ -12,13 +12,20 @@ export default function Movement(body, stamina) {
   const right = new THREE.Vector3();
 
   const velocity = new THREE.Vector3();
+useFrame((_, delta) => {
+  if (!body.current) return;
 
-  useFrame((_, delta) => {
-    if (!body.current) return;
+  const current = body.current.linvel();
 
-    const current = body.current.linvel();
+  const position = body.current.translation();
 
-    direction.set(0, 0, 0);
+  camera.position.set(
+    position.x,
+    position.y + 0.8,
+    position.z
+  );
+
+  direction.set(0, 0, 0);
 
     forward.set(0, 0, -1);
     forward.applyQuaternion(camera.quaternion);
