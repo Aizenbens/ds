@@ -28,6 +28,10 @@ export default function Scene() {
 
         <Sky />
         <Lights />
+        <mesh position={[0, 2, 0]}>
+  <boxGeometry args={[1, 1, 1]} />
+  <meshStandardMaterial color="red" />
+</mesh>
 
                <Physics>
           <World />
