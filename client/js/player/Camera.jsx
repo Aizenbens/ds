@@ -1,9 +1,9 @@
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect } from "react";
-import { useThree } from "@react-three/fiber";
 
 import Settings from "./Settings.js";
 
-export default function Camera() {
+export default function Camera({ body }) {
   const { camera } = useThree();
 
   useEffect(() => {
@@ -12,6 +12,18 @@ export default function Camera() {
     camera.far = 1000;
     camera.updateProjectionMatrix();
   }, [camera]);
+
+  useFrame(() => {
+    if (!body?.current) return;
+
+    const pos = body.current.translation();
+
+    camera.position.set(
+      pos.x,
+      pos.y + 0.8, // ارتفاع العين
+      pos.z
+    );
+  });
 
   return null;
 }
