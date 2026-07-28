@@ -1,54 +1,44 @@
-import React, { useRef } from "react";
-import { RigidBody, CapsuleCollider } from "@react-three/rapier";
+import { useFrame } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 
-import Camera from "./Camera.jsx";
-import CameraController from "./CameraController.jsx";
-import Controls from "./Controls.jsx";
-import HeadBob from "./HeadBob.jsx";
+import keys from "../input/Input.js";
+import Settings from "./Settings.js";
 
-import PlayerController from "./PlayerController.jsx";
+let timer = 0;
 
-export default function Player() {
-  const body = useRef();
+export default function HeadBob() {
+  const { camera } = useThree();
 
-  // تشغيل أنظمة اللاعب
-  PlayerController(body);
+  useFrame((_, delta) => {
+    // إذا لم يكن هناك حركة أعد الكاميرا تدريجياً
+    if (
+      !keys["KeyW"] &&
+      !keys["KeyA"] &&
+      !keys["KeyS"] &&
+      !keys["KeyD"]
+    ) {
+      timer = 0;
 
-  return (
-    <>
-      {/* إعداد الكاميرا */}
-      <Camera />
+      camera.position.y +=
+        (camera.position.y - camera.position.y) * delta;
 
-      {/* تغيير الـ FOV */}
-      <CameraController />
+      return;
+    }
 
-      {/* اهتزاز الكاميرا أثناء الحركة */}
-      <HeadBob />
+    // سرعة الاهتزاز
+    const speed = keys["ShiftLeft"]
+      ? Settings.headBobSprintSpeed
+      : Settings.headBobSpeed;
 
-      {/* تحكم الماوس */}
-      <Controls />
+    timer += delta * speed;
 
-      {/* جسم اللاعب */}
-      <RigidBody
-        ref={body}
-        colliders={false}
-        type="dynamic"
-        position={[0, 3, 0]}
-        enabledRotations={[false, false, false]}
-        mass={1}
-        friction={1}
-        restitution={0}
-        canSleep={false}
-      >
-        {/* مصادم اللاعب */}
-        <CapsuleCollider args={[0.5, 0.4]} />
+    // الاهتزاز العمودي
+    camera.position.y +=
+      Math.sin(timer) *
+      Settings.headBobAmount *
+      delta *
+      60;
+  });
 
-        {/* جسم مؤقت للاعب */}
-        <mesh castShadow>
-          <capsuleGeometry args={[0.4, 1, 8, 16]} />
-          <meshStandardMaterial color="dodgerblue" />
-        </mesh>
-      </RigidBody>
-    </>
-  );
+  return null;
 }
