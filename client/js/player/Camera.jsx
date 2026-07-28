@@ -1,16 +1,15 @@
-import { useThree, useFrame } from "@react-three/fiber";
-import { useEffect } from "react";
+import { useThree, useEffect } from "@react-three/fiber";
+import Settings from "./Settings.js";
 
 export default function Camera() {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(0, 0.8, 0);
+    camera.fov = Settings.cameraFov;
+    camera.near = 0.1;
+    camera.far = 1000;
+    camera.updateProjectionMatrix();
   }, [camera]);
-
-  useFrame(() => {
-    // سيتم إضافة Head Bob لاحقًا هنا
-  });
 
   return null;
 }
