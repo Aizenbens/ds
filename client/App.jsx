@@ -1,20 +1,15 @@
 import React from "react";
 
+import { GameProvider } from "./js/core/GameManager.jsx";
+
+import Scene from "./js/scene/Scene.jsx";
+import HUD from "./js/ui/HUD.jsx";
+
 export default function App() {
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "red",
-        color: "white",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        fontSize: "50px",
-      }}
-    >
-      HELLO
-    </div>
+    <GameProvider>
+      <Scene />
+      <HUD />
+    </GameProvider>
   );
 }
