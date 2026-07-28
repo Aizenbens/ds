@@ -1,47 +1,54 @@
-import { useFrame, useThree } from "@react-three/fiber";
-import { useRef } from "react";
+import React, { useRef } from "react";
+import { RigidBody, CapsuleCollider } from "@react-three/rapier";
 
-import keys from "../input/Input.js";
-import Settings from "./Settings.js";
+import Camera from "./Camera.jsx";
+import CameraController from "./CameraController.jsx";
+import Controls from "./Controls.jsx";
+import HeadBob from "./HeadBob.jsx";
 
-export default function HeadBob() {
-  const { camera } = useThree();
+import PlayerController from "./PlayerController.jsx";
 
-  const timer = useRef(0);
-  const baseY = useRef(null);
+export default function Player() {
+  const body = useRef();
 
-  useFrame((_, delta) => {
-    if (baseY.current === null) {
-      baseY.current = camera.position.y;
-    }
+  // تشغيل أنظمة اللاعب
+  PlayerController(body);
 
-    const moving =
-      keys["KeyW"] ||
-      keys["KeyA"] ||
-      keys["KeyS"] ||
-      keys["KeyD"];
+  return (
+    <>
+      {/* إعداد الكاميرا */}
+      <Camera />
 
-    if (!moving) {
-      timer.current = 0;
+      {/* تغيير الـ FOV */}
+      <CameraController />
 
-      camera.position.y +=
-        (baseY.current - camera.position.y) * delta * 8;
+      {/* اهتزاز الكاميرا أثناء الحركة */}
+      <HeadBob />
 
-      return;
-    }
+      {/* تحكم الماوس */}
+      <Controls />
 
-    const sprint = keys["ShiftLeft"];
+      {/* جسم اللاعب */}
+      <RigidBody
+        ref={body}
+        colliders={false}
+        type="dynamic"
+        position={[0, 3, 0]}
+        enabledRotations={[false, false, false]}
+        mass={1}
+        friction={1}
+        restitution={0}
+        canSleep={false}
+      >
+        {/* مصادم اللاعب */}
+        <CapsuleCollider args={[0.5, 0.4]} />
 
-    timer.current +=
-      delta *
-      (sprint
-        ? Settings.headBobSprintSpeed
-        : Settings.headBobSpeed);
-
-    camera.position.y =
-      baseY.current +
-      Math.sin(timer.current) * Settings.headBobAmount;
-  });
-
-  return null;
+        {/* جسم مؤقت للاعب */}
+        <mesh castShadow>
+          <capsuleGeometry args={[0.4, 1, 8, 16]} />
+          <meshStandardMaterial color="dodgerblue" />
+        </mesh>
+      </RigidBody>
+    </>
+  );
 }
