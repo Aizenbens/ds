@@ -16,21 +16,21 @@ export default function Scene() {
         height: "100vh",
       }}
     >
-      <Canvas
-        shadows
-        camera={{
-          position: [0, 0, 0],
-          fov: 75,
-        }}
-      >
-        <Sky />
-        <Lights />
+     <Canvas
+  shadows
+  camera={{
+    position: [0, 3, 8],
+    fov: 75,
+  }}
+>
+  <axesHelper args={[5]} />
+  <gridHelper args={[20, 20]} />
 
-        <Physics>
-          <World />
-          <Player />
-        </Physics>
-      </Canvas>
-    </div>
-  );
-}
+  <Sky />
+  <Lights />
+
+  <Physics>
+    <World />
+    <Player />
+  </Physics>
+</Canvas>
